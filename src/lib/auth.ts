@@ -14,8 +14,8 @@ export interface AuthUser {
 // cache() deduplicates calls within a single server request
 export const getUser = cache(async (): Promise<AuthUser | null> => {
   const headersList = await headers();
-  const sub = headersList.get("x-forwarded-user");
-  const email = headersList.get("x-forwarded-email");
+  const sub = headersList.get("x-user") ?? headersList.get("x-forwarded-user");
+  const email = headersList.get("x-email") ?? headersList.get("x-forwarded-email");
 
   if (!sub) return null;
 

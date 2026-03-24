@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  const forwardedUser = request.headers.get("x-forwarded-user");
+  const forwardedUser = request.headers.get("x-user") ?? request.headers.get("x-forwarded-user");
 
   // oauth2-proxy handles authentication externally.
   // If the header is missing, the request wasn't authenticated.

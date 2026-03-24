@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers();
-  const email = headersList.get("x-forwarded-email");
+  const email = headersList.get("x-email") ?? headersList.get("x-forwarded-email");
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
