@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/mgoodric/cashflow/compare/v2.0.1...v2.0.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* read X-User/X-Email headers from nginx oauth2-proxy config ([a212f01](https://github.com/mgoodric/cashflow/commit/a212f01383b296be9ef38831c38f3c4aacef9449))
+
 ## [2.0.1](https://github.com/mgoodric/cashflow/compare/v2.0.0...v2.0.1) (2026-03-24)
 
 
