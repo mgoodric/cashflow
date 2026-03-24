@@ -1,14 +1,20 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { transactions } from "@/lib/db/schema";
+import { eq, count } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default async function InsightsPage() {
-  const supabase = await createClient();
+  const user = await requireUser();
 
-  const { count: transactionCount } = await supabase
-    .from("transactions")
-    .select("*", { count: "exact", head: true });
+  const [result] = await db
+    .select({ count: count() })
+    .from(transactions)
+    .where(eq(transactions.userId, user.id));
+
+  const transactionCount = result?.count ?? 0;
 
   const features = [
     {
@@ -16,14 +22,14 @@ export default async function InsightsPage() {
       description:
         "Analyze your transaction history to find recurring payments and income. Convert detected patterns into cashflow events for accurate forecasting.",
       href: "/insights/recurring",
-      context: `Based on ${transactionCount ?? 0} transactions`,
+      context: `Based on ${transactionCount} transactions`,
     },
     {
       title: "Audit Categories",
       description:
         "Review transactions that may be miscategorized based on payee patterns and amount analysis. Fix inconsistencies in bulk.",
       href: "/insights/categories",
-      context: `Scanning ${transactionCount ?? 0} transactions`,
+      context: `Scanning ${transactionCount} transactions`,
     },
   ];
 

@@ -1,23 +1,28 @@
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { accounts, cashflowEvents, categories } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
+import { toAccount, toEvent, toCategory } from "@/lib/db/mappers";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { ProjectionChart } from "@/components/dashboard/projection-chart";
 import { AccountSummaryCard } from "@/components/dashboard/account-summary-card";
-import type { Account, CashflowEvent } from "@/lib/types/database";
+import { SankeyChart } from "@/components/dashboard/sankey-chart";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const user = await requireUser();
 
-  const [accountsResult, eventsResult] = await Promise.all([
-    supabase.from("accounts").select("*").eq("is_active", true).order("name"),
-    supabase.from("cashflow_events").select("*").eq("is_active", true),
+  const [accountRows, eventRows, categoryRows] = await Promise.all([
+    db.select().from(accounts).where(and(eq(accounts.userId, user.id), eq(accounts.isActive, true))).orderBy(accounts.name),
+    db.select().from(cashflowEvents).where(and(eq(cashflowEvents.userId, user.id), eq(cashflowEvents.isActive, true))),
+    db.select().from(categories).where(eq(categories.userId, user.id)).orderBy(categories.name),
   ]);
 
-  const accounts = (accountsResult.data as Account[]) || [];
-  const events = (eventsResult.data as CashflowEvent[]) || [];
+  const accts = accountRows.map(toAccount);
+  const evts = eventRows.map(toEvent);
+  const cats = categoryRows.map(toCategory);
 
-  const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
+  const totalBalance = accts.reduce((sum, a) => sum + a.current_balance, 0);
 
-  // Compute this month's income/expenses from one-off events
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0));
@@ -25,13 +30,13 @@ export default async function DashboardPage() {
   let incomeThisMonth = 0;
   let expensesThisMonth = 0;
 
-  for (const event of events) {
+  for (const event of evts) {
     const eventDate = new Date(event.event_date + "T00:00:00Z");
     if (eventDate >= monthStart && eventDate <= monthEnd) {
       if (event.event_type === "income") {
-        incomeThisMonth += Number(event.amount);
+        incomeThisMonth += event.amount;
       } else {
-        expensesThisMonth += Number(event.amount);
+        expensesThisMonth += event.amount;
       }
     }
   }
@@ -47,16 +52,18 @@ export default async function DashboardPage() {
         totalBalance={totalBalance}
         incomeThisMonth={incomeThisMonth}
         expensesThisMonth={expensesThisMonth}
-        activeAccounts={accounts.length}
+        activeAccounts={accts.length}
       />
 
-      <ProjectionChart accounts={accounts} events={events} />
+      <ProjectionChart accounts={accts} events={evts} />
 
-      {accounts.length > 0 && (
+      <SankeyChart events={evts} categories={cats} />
+
+      {accts.length > 0 && (
         <div>
           <h2 className="mb-4 text-lg font-semibold">Accounts</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {accounts.map((account) => (
+            {accts.map((account) => (
               <AccountSummaryCard key={account.id} account={account} />
             ))}
           </div>

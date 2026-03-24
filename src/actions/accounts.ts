@@ -2,56 +2,48 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { accounts } from "@/lib/db/schema";
+import { requireUser } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 
 export async function createAccount(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
-  const { error } = await supabase.from("accounts").insert({
-    user_id: user.id,
+  await db.insert(accounts).values({
+    userId: user.id,
     name: formData.get("name") as string,
-    account_type: formData.get("account_type") as string,
-    current_balance: parseFloat(formData.get("current_balance") as string) || 0,
+    accountType: formData.get("account_type") as string,
+    currentBalance: String(parseFloat(formData.get("current_balance") as string) || 0),
     currency: (formData.get("currency") as string) || "USD",
   });
-
-  if (error) throw new Error(error.message);
 
   revalidatePath("/accounts");
   redirect("/accounts");
 }
 
 export async function updateAccount(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
-  const { error } = await supabase
-    .from("accounts")
-    .update({
+  await db
+    .update(accounts)
+    .set({
       name: formData.get("name") as string,
-      account_type: formData.get("account_type") as string,
-      current_balance: parseFloat(formData.get("current_balance") as string) || 0,
+      accountType: formData.get("account_type") as string,
+      currentBalance: String(parseFloat(formData.get("current_balance") as string) || 0),
       currency: (formData.get("currency") as string) || "USD",
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date(),
     })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
+    .where(eq(accounts.id, id));
 
   revalidatePath("/accounts");
   redirect("/accounts");
 }
 
 export async function deleteAccount(id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
-  const { error } = await supabase.from("accounts").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await db.delete(accounts).where(eq(accounts.id, id));
 
   revalidatePath("/accounts");
   redirect("/accounts");

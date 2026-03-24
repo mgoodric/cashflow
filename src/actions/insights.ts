@@ -1,64 +1,59 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { transactions, categories, cashflowEvents } from "@/lib/db/schema";
+import { requireUser } from "@/lib/auth";
+import { eq, inArray } from "drizzle-orm";
+import { toTransaction, toCategory } from "@/lib/db/mappers";
 import type { Transaction, Category, RecurrencePattern } from "@/lib/types/database";
 import { detectRecurringPatterns } from "@/lib/analysis/recurrence-detector";
 import { detectMisclassifications } from "@/lib/analysis/category-auditor";
 
 export async function getTransactions(): Promise<Transaction[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
-  const { data } = await supabase
-    .from("transactions")
-    .select("*")
-    .order("transaction_date", { ascending: false });
+  const rows = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.userId, user.id))
+    .orderBy(transactions.transactionDate);
 
-  return (data as Transaction[]) ?? [];
+  return rows.map(toTransaction);
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
-  const { data } = await supabase.from("categories").select("*").order("name");
+  const rows = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.userId, user.id))
+    .orderBy(categories.name);
 
-  return (data as Category[]) ?? [];
+  return rows.map(toCategory);
 }
 
 export async function analyzeRecurringPatterns(): Promise<RecurrencePattern[]> {
-  const transactions = await getTransactions();
-  return detectRecurringPatterns(transactions);
+  const txns = await getTransactions();
+  return detectRecurringPatterns(txns);
 }
 
 export async function analyzeCategoryMisclassifications() {
-  const [transactions, categories] = await Promise.all([
+  const [txns, cats] = await Promise.all([
     getTransactions(),
     getCategories(),
   ]);
-  return detectMisclassifications(transactions, categories);
+  return detectMisclassifications(txns, cats);
 }
 
 export async function createEventFromPattern(pattern: RecurrencePattern) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   if (!pattern.mostCommonAccountId) {
     throw new Error("Pattern has no associated account");
   }
 
-  // Calculate next expected occurrence
   const lastDate = new Date(pattern.lastOccurrence + "T00:00:00Z");
   let nextDate: Date;
 
@@ -95,23 +90,21 @@ export async function createEventFromPattern(pattern: RecurrencePattern) {
 
   const eventDate = nextDate.toISOString().split("T")[0];
 
-  const { error } = await supabase.from("cashflow_events").insert({
-    user_id: user.id,
-    account_id: pattern.mostCommonAccountId,
-    category_id: pattern.mostCommonCategory,
+  await db.insert(cashflowEvents).values({
+    userId: user.id,
+    accountId: pattern.mostCommonAccountId,
+    categoryId: pattern.mostCommonCategory,
     name: pattern.payee,
-    event_type: pattern.suggestedEventType,
-    amount: pattern.medianAmount,
-    event_date: eventDate,
-    is_recurring: true,
-    recurrence_rule: {
+    eventType: pattern.suggestedEventType,
+    amount: String(pattern.medianAmount),
+    eventDate,
+    isRecurring: true,
+    recurrenceRule: {
       frequency: pattern.frequency,
       interval: 1,
       day_of_month: pattern.suggestedDayOfMonth,
     },
   });
-
-  if (error) throw new Error(error.message);
 
   revalidatePath("/events");
   revalidatePath("/dashboard");
@@ -121,16 +114,11 @@ export async function createEventFromPattern(pattern: RecurrencePattern) {
 export async function fixCategoryMisclassifications(
   fixes: Array<{ transactionId: string; newCategoryId: string }>
 ): Promise<{ fixed: number; errors: string[] }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
   let fixed = 0;
   const errors: string[] = [];
 
-  // Group by newCategoryId to batch updates
   const grouped = new Map<string, string[]>();
   for (const fix of fixes) {
     const ids = grouped.get(fix.newCategoryId) ?? [];
@@ -139,19 +127,21 @@ export async function fixCategoryMisclassifications(
   }
 
   for (const [categoryId, transactionIds] of grouped) {
-    const { error, count } = await supabase
-      .from("transactions")
-      .update({
-        category_id: categoryId,
-        is_flagged: false,
-        flag_reason: null,
-      })
-      .in("id", transactionIds);
+    try {
+      await db
+        .update(transactions)
+        .set({
+          categoryId,
+          isFlagged: false,
+          flagReason: null,
+        })
+        .where(inArray(transactions.id, transactionIds));
 
-    if (error) {
-      errors.push(`Failed to fix batch for category ${categoryId}: ${error.message}`);
-    } else {
-      fixed += count ?? transactionIds.length;
+      fixed += transactionIds.length;
+    } catch (err) {
+      errors.push(
+        `Failed to fix batch for category ${categoryId}: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
     }
   }
 
@@ -160,16 +150,12 @@ export async function fixCategoryMisclassifications(
 }
 
 export async function dismissFlags(transactionIds: string[]): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
-  await supabase
-    .from("transactions")
-    .update({ is_flagged: false, flag_reason: "dismissed" })
-    .in("id", transactionIds);
+  await db
+    .update(transactions)
+    .set({ isFlagged: false, flagReason: "dismissed" })
+    .where(inArray(transactions.id, transactionIds));
 
   revalidatePath("/insights");
 }

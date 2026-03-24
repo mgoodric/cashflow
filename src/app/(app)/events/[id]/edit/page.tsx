@@ -1,27 +1,32 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { cashflowEvents, accounts, categories } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
+import { toAccount, toEvent, toCategory } from "@/lib/db/mappers";
 import { EventForm } from "@/components/events/event-form";
 import { updateEvent } from "@/actions/events";
-import type { Account, CashflowEvent } from "@/lib/types/database";
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const user = await requireUser();
 
-  const [eventResult, accountsResult] = await Promise.all([
-    supabase.from("cashflow_events").select("*").eq("id", id).single(),
-    supabase.from("accounts").select("*").order("name"),
+  const [eventRows, accountRows, categoryRows] = await Promise.all([
+    db.select().from(cashflowEvents).where(eq(cashflowEvents.id, id)).limit(1),
+    db.select().from(accounts).where(eq(accounts.userId, user.id)).orderBy(accounts.name),
+    db.select().from(categories).where(eq(categories.userId, user.id)).orderBy(categories.name),
   ]);
 
-  if (!eventResult.data) notFound();
+  if (eventRows.length === 0) notFound();
 
   const boundAction = updateEvent.bind(null, id);
 
   return (
     <div>
       <EventForm
-        event={eventResult.data as CashflowEvent}
-        accounts={(accountsResult.data as Account[]) || []}
+        event={toEvent(eventRows[0])}
+        accounts={accountRows.map(toAccount)}
+        categories={categoryRows.map(toCategory)}
         action={boundAction}
         title="Edit Cashflow Event"
       />

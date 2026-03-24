@@ -1,20 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { accounts, categories } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
+import { toAccount, toCategory } from "@/lib/db/mappers";
 import { ImportWizard } from "@/components/import/import-wizard";
-import type { Account, Category } from "@/lib/types/database";
 
 export default async function ImportPage() {
-  const supabase = await createClient();
+  const user = await requireUser();
 
-  const [{ data: accounts }, { data: categories }] = await Promise.all([
-    supabase
-      .from("accounts")
-      .select("*")
-      .eq("is_active", true)
-      .order("name"),
-    supabase
-      .from("categories")
-      .select("*")
-      .order("name"),
+  const [accountRows, categoryRows] = await Promise.all([
+    db.select().from(accounts).where(and(eq(accounts.userId, user.id), eq(accounts.isActive, true))).orderBy(accounts.name),
+    db.select().from(categories).where(eq(categories.userId, user.id)).orderBy(categories.name),
   ]);
 
   return (
@@ -26,8 +22,8 @@ export default async function ImportPage() {
         </p>
       </div>
       <ImportWizard
-        existingAccounts={(accounts as Account[]) ?? []}
-        existingCategories={(categories as Category[]) ?? []}
+        existingAccounts={accountRows.map(toAccount)}
+        existingCategories={categoryRows.map(toCategory)}
       />
     </div>
   );

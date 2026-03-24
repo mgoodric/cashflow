@@ -1,16 +1,23 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { accounts } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
+import { toAccount } from "@/lib/db/mappers";
 import { Button } from "@/components/ui/button";
 import { AccountCard } from "@/components/accounts/account-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Account } from "@/lib/types/database";
 
 export default async function AccountsPage() {
-  const supabase = await createClient();
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const user = await requireUser();
+
+  const rows = await db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.userId, user.id))
+    .orderBy(accounts.createdAt);
+
+  const accountList = rows.map(toAccount);
 
   return (
     <div>
@@ -24,7 +31,7 @@ export default async function AccountsPage() {
         </Link>
       </div>
 
-      {!accounts || accounts.length === 0 ? (
+      {accountList.length === 0 ? (
         <EmptyState
           title="No accounts yet"
           description="Add your first account to start tracking your cashflow."
@@ -36,7 +43,7 @@ export default async function AccountsPage() {
         />
       ) : (
         <div className="space-y-4">
-          {(accounts as Account[]).map((account) => (
+          {accountList.map((account) => (
             <AccountCard key={account.id} account={account} />
           ))}
         </div>

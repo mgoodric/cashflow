@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecurrenceFields } from "./recurrence-fields";
 import { SELECT_CLASS } from "@/lib/constants";
-import type { Account, CashflowEvent, RecurrenceRule } from "@/lib/types/database";
+import type { Account, Category, CashflowEvent, RecurrenceRule } from "@/lib/types/database";
 
 interface EventFormProps {
   event?: CashflowEvent;
   accounts: Account[];
+  categories?: Category[];
   action: (formData: FormData) => void;
   title: string;
 }
@@ -23,12 +24,13 @@ const defaultRule: RecurrenceRule = {
   day_of_month: 1,
 };
 
-export function EventForm({ event, accounts, action, title }: EventFormProps) {
+export function EventForm({ event, accounts, categories = [], action, title }: EventFormProps) {
   const [isRecurring, setIsRecurring] = useState(event?.is_recurring ?? false);
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(
     event?.recurrence_rule ?? defaultRule
   );
   const [eventType, setEventType] = useState(event?.event_type ?? "expense");
+  const [categoryId, setCategoryId] = useState(event?.category_id ?? "");
 
   return (
     <Card className="max-w-lg">
@@ -61,6 +63,22 @@ export function EventForm({ event, accounts, action, title }: EventFormProps) {
                 <option key={account.id} value={account.id}>{account.name}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category_id">Category (optional)</Label>
+            <select
+              id="category_id"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">No category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+            <input type="hidden" name="category_id" value={categoryId} />
           </div>
 
           <div className="space-y-2">

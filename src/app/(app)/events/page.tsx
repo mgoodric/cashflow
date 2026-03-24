@@ -1,16 +1,44 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { cashflowEvents, accounts } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { requireUser } from "@/lib/auth";
+import { toAccount } from "@/lib/db/mappers";
 import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/events/event-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { CashflowEvent } from "@/lib/types/database";
 
 export default async function EventsPage() {
-  const supabase = await createClient();
-  const { data: events } = await supabase
-    .from("cashflow_events")
-    .select("*, account:accounts(*)")
-    .order("event_date", { ascending: false });
+  const user = await requireUser();
+
+  const rows = await db
+    .select({
+      event: cashflowEvents,
+      account: accounts,
+    })
+    .from(cashflowEvents)
+    .where(eq(cashflowEvents.userId, user.id))
+    .leftJoin(accounts, eq(cashflowEvents.accountId, accounts.id))
+    .orderBy(cashflowEvents.eventDate);
+
+  const events: CashflowEvent[] = rows.map(({ event: r, account: a }) => ({
+    id: r.id,
+    user_id: r.userId,
+    account_id: r.accountId,
+    category_id: r.categoryId,
+    name: r.name,
+    event_type: r.eventType as CashflowEvent["event_type"],
+    amount: Number(r.amount),
+    event_date: r.eventDate,
+    is_recurring: r.isRecurring,
+    recurrence_rule: r.recurrenceRule as CashflowEvent["recurrence_rule"],
+    notes: r.notes,
+    is_active: r.isActive,
+    created_at: r.createdAt.toISOString(),
+    updated_at: r.updatedAt.toISOString(),
+    account: a ? toAccount(a) : undefined,
+  }));
 
   return (
     <div>
@@ -24,7 +52,7 @@ export default async function EventsPage() {
         </Link>
       </div>
 
-      {!events || events.length === 0 ? (
+      {events.length === 0 ? (
         <EmptyState
           title="No events yet"
           description="Add your first cashflow event to start forecasting."
@@ -36,7 +64,7 @@ export default async function EventsPage() {
         />
       ) : (
         <div className="space-y-4">
-          {(events as CashflowEvent[]).map((event) => (
+          {events.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>

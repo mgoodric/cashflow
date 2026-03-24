@@ -2,29 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { cashflowEvents } from "@/lib/db/schema";
+import { requireUser } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 
 export async function createEvent(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   const isRecurring = formData.get("is_recurring") === "true";
   const recurrenceRuleJson = formData.get("recurrence_rule") as string;
+  const categoryId = formData.get("category_id") as string;
 
-  const { error } = await supabase.from("cashflow_events").insert({
-    user_id: user.id,
-    account_id: formData.get("account_id") as string,
+  await db.insert(cashflowEvents).values({
+    userId: user.id,
+    accountId: formData.get("account_id") as string,
+    categoryId: categoryId || null,
     name: formData.get("name") as string,
-    event_type: formData.get("event_type") as string,
-    amount: parseFloat(formData.get("amount") as string),
-    event_date: formData.get("event_date") as string,
-    is_recurring: isRecurring,
-    recurrence_rule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
+    eventType: formData.get("event_type") as string,
+    amount: String(parseFloat(formData.get("amount") as string)),
+    eventDate: formData.get("event_date") as string,
+    isRecurring,
+    recurrenceRule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
     notes: (formData.get("notes") as string) || null,
   });
-
-  if (error) throw new Error(error.message);
 
   revalidatePath("/events");
   revalidatePath("/dashboard");
@@ -32,29 +33,27 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function updateEvent(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
   const isRecurring = formData.get("is_recurring") === "true";
   const recurrenceRuleJson = formData.get("recurrence_rule") as string;
+  const categoryId = formData.get("category_id") as string;
 
-  const { error } = await supabase
-    .from("cashflow_events")
-    .update({
-      account_id: formData.get("account_id") as string,
+  await db
+    .update(cashflowEvents)
+    .set({
+      accountId: formData.get("account_id") as string,
+      categoryId: categoryId || null,
       name: formData.get("name") as string,
-      event_type: formData.get("event_type") as string,
-      amount: parseFloat(formData.get("amount") as string),
-      event_date: formData.get("event_date") as string,
-      is_recurring: isRecurring,
-      recurrence_rule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
+      eventType: formData.get("event_type") as string,
+      amount: String(parseFloat(formData.get("amount") as string)),
+      eventDate: formData.get("event_date") as string,
+      isRecurring,
+      recurrenceRule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
       notes: (formData.get("notes") as string) || null,
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date(),
     })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
+    .where(eq(cashflowEvents.id, id));
 
   revalidatePath("/events");
   revalidatePath("/dashboard");
@@ -62,12 +61,9 @@ export async function updateEvent(id: string, formData: FormData) {
 }
 
 export async function deleteEvent(id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
-  const { error } = await supabase.from("cashflow_events").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await db.delete(cashflowEvents).where(eq(cashflowEvents.id, id));
 
   revalidatePath("/events");
   revalidatePath("/dashboard");

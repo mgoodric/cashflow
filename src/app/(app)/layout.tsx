@@ -1,22 +1,9 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
-
-async function signOut() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
+import { headers } from "next/headers";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const headersList = await headers();
+  const email = headersList.get("x-forwarded-email");
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
@@ -46,11 +33,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               ))}
             </nav>
           </div>
-          <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit">
-              Sign Out
-            </Button>
-          </form>
+          {email && (
+            <span className="text-sm text-gray-500">{email}</span>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8">

@@ -1,8 +1,15 @@
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  const forwardedUser = request.headers.get("x-forwarded-user");
+
+  // oauth2-proxy handles authentication externally.
+  // If the header is missing, the request wasn't authenticated.
+  if (!forwardedUser) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

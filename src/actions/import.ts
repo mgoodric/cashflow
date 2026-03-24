@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { accounts, categories, transactions, importSessions } from "@/lib/db/schema";
+import { requireUser } from "@/lib/auth";
+import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { normalizePayee } from "@/lib/import/payee-normalizer";
 import type {
   AccountType,
@@ -11,11 +13,7 @@ import type {
 } from "@/lib/types/database";
 
 export async function executeImport(payload: ImportPayload): Promise<ImportResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser();
 
   const errors: string[] = [];
   let accountsCreated = 0;
@@ -23,30 +21,27 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
   let transactionsImported = 0;
   let duplicatesSkipped = 0;
 
-  // 1. Create import session
-  const { data: session, error: sessionError } = await supabase
-    .from("import_sessions")
-    .insert({
-      user_id: user.id,
+  const [session] = await db
+    .insert(importSessions)
+    .values({
+      userId: user.id,
       source: "qif",
       filename: "import.qif",
       status: "pending",
     })
-    .select()
-    .single();
+    .returning();
 
-  if (sessionError || !session) {
+  if (!session) {
     return {
       sessionId: "",
       accountsCreated: 0,
       categoriesCreated: 0,
       transactionsImported: 0,
       duplicatesSkipped: 0,
-      errors: [sessionError?.message ?? "Failed to create import session"],
+      errors: ["Failed to create import session"],
     };
   }
 
-  // 2. Create accounts — build mapping from QIF name to account ID
   const accountIdMap = new Map<string, string>();
 
   for (const mapping of payload.accountMappings) {
@@ -58,44 +53,38 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
     }
 
     if (mapping.action === "create") {
-      const { data: newAccount, error } = await supabase
-        .from("accounts")
-        .insert({
-          user_id: user.id,
+      const [newAccount] = await db
+        .insert(accounts)
+        .values({
+          userId: user.id,
           name: mapping.qifName,
-          account_type: (mapping.newAccountType ?? "checking") as AccountType,
-          current_balance: 0,
+          accountType: (mapping.newAccountType ?? "checking") as AccountType,
+          currentBalance: "0",
           currency: "USD",
         })
-        .select()
-        .single();
+        .returning();
 
-      if (error) {
-        errors.push(`Failed to create account "${mapping.qifName}": ${error.message}`);
-        continue;
+      if (newAccount) {
+        accountIdMap.set(mapping.qifName, newAccount.id);
+        accountsCreated++;
+      } else {
+        errors.push(`Failed to create account "${mapping.qifName}"`);
       }
-
-      accountIdMap.set(mapping.qifName, newAccount.id);
-      accountsCreated++;
     }
   }
 
-  // 3. Create categories — build mapping from QIF path to category ID
   const categoryIdMap = new Map<string, string>();
 
-  // Fetch existing categories for matching
-  const { data: existingCategories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("name");
+  const existingCategories = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.userId, user.id))
+    .orderBy(categories.name);
 
-  if (existingCategories) {
-    for (const cat of existingCategories) {
-      categoryIdMap.set(cat.name.toLowerCase(), cat.id);
-    }
+  for (const cat of existingCategories) {
+    categoryIdMap.set(cat.name.toLowerCase(), cat.id);
   }
 
-  // Sort category mappings so parents come before children
   const sortedCategories = [...payload.categoryMappings].sort(
     (a, b) => a.qifPath.split(":").length - b.qifPath.split(":").length
   );
@@ -114,35 +103,31 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
       const parentPath = parts.length > 1 ? parts.slice(0, -1).join(":") : null;
       const parentId = parentPath ? categoryIdMap.get(parentPath.toLowerCase()) ?? null : null;
 
-      const { data: newCat, error } = await supabase
-        .from("categories")
-        .insert({
-          user_id: user.id,
+      const [newCat] = await db
+        .insert(categories)
+        .values({
+          userId: user.id,
           name,
-          parent_id: parentId,
+          parentId,
         })
-        .select()
-        .single();
+        .returning();
 
-      if (error) {
-        errors.push(`Failed to create category "${mapping.qifPath}": ${error.message}`);
-        continue;
+      if (newCat) {
+        categoryIdMap.set(mapping.qifPath.toLowerCase(), newCat.id);
+        categoriesCreated++;
+      } else {
+        errors.push(`Failed to create category "${mapping.qifPath}"`);
       }
-
-      categoryIdMap.set(mapping.qifPath.toLowerCase(), newCat.id);
-      categoriesCreated++;
     }
   }
 
-  // 4. Insert transactions in batches
   const BATCH_SIZE = 500;
   const transactionsToInsert = [];
 
   for (const t of payload.transactions) {
     const accountId = accountIdMap.get(t.qifAccountName);
-    if (!accountId) continue; // Account was skipped
+    if (!accountId) continue;
 
-    // Skip transfers if requested
     if (payload.skipTransfers && t.category.startsWith("[") && t.category.endsWith("]")) {
       continue;
     }
@@ -154,78 +139,82 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
     const payeeNorm = t.payee ? normalizePayee(t.payee) : null;
 
     transactionsToInsert.push({
-      user_id: user.id,
-      account_id: accountId,
-      import_session_id: session.id,
-      category_id: categoryId,
-      transaction_date: t.date,
-      amount: t.amount,
+      userId: user.id,
+      accountId,
+      importSessionId: session.id,
+      categoryId,
+      transactionDate: t.date,
+      amount: String(t.amount),
       payee: t.payee,
-      payee_normalized: payeeNorm,
+      payeeNormalized: payeeNorm,
       memo: t.memo,
-      check_number: t.checkNumber,
-      transaction_type: t.type,
-      source: "qif",
-      original_category: t.category || null,
+      checkNumber: t.checkNumber,
+      transactionType: t.type,
+      source: "qif" as const,
+      originalCategory: t.category || null,
     });
   }
 
-  // Duplicate detection if enabled
   if (payload.skipDuplicates && transactionsToInsert.length > 0) {
-    // Filter to only relevant accounts and date range
-    const accountIds = [...new Set(transactionsToInsert.map((t) => t.account_id))];
-    const dates = transactionsToInsert.map((t) => t.transaction_date).sort();
+    const accountIds = [...new Set(transactionsToInsert.map((t) => t.accountId))];
+    const dates = transactionsToInsert.map((t) => t.transactionDate).sort();
     const minDate = dates[0];
     const maxDate = dates[dates.length - 1];
 
-    const { data: existing } = await supabase
-      .from("transactions")
-      .select("transaction_date, amount, payee_normalized, account_id")
-      .in("account_id", accountIds)
-      .gte("transaction_date", minDate)
-      .lte("transaction_date", maxDate);
-
-    if (existing) {
-      const existingKeys = new Set(
-        existing.map(
-          (e: { transaction_date: string; amount: number; payee_normalized: string | null; account_id: string }) =>
-            `${e.account_id}|${e.transaction_date}|${e.amount}|${e.payee_normalized}`
+    const existing = await db
+      .select({
+        transactionDate: transactions.transactionDate,
+        amount: transactions.amount,
+        payeeNormalized: transactions.payeeNormalized,
+        accountId: transactions.accountId,
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.accountId, accountIds),
+          gte(transactions.transactionDate, minDate),
+          lte(transactions.transactionDate, maxDate)
         )
       );
 
-      const filtered = transactionsToInsert.filter((t) => {
-        const key = `${t.account_id}|${t.transaction_date}|${t.amount}|${t.payee_normalized}`;
-        if (existingKeys.has(key)) {
-          duplicatesSkipped++;
-          return false;
-        }
-        return true;
-      });
+    const existingKeys = new Set(
+      existing.map(
+        (e) => `${e.accountId}|${e.transactionDate}|${e.amount}|${e.payeeNormalized}`
+      )
+    );
 
-      transactionsToInsert.length = 0;
-      transactionsToInsert.push(...filtered);
-    }
+    const filtered = transactionsToInsert.filter((t) => {
+      const key = `${t.accountId}|${t.transactionDate}|${t.amount}|${t.payeeNormalized}`;
+      if (existingKeys.has(key)) {
+        duplicatesSkipped++;
+        return false;
+      }
+      return true;
+    });
+
+    transactionsToInsert.length = 0;
+    transactionsToInsert.push(...filtered);
   }
 
-  // Batch insert
   for (let i = 0; i < transactionsToInsert.length; i += BATCH_SIZE) {
     const batch = transactionsToInsert.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase.from("transactions").insert(batch);
-    if (error) {
-      errors.push(`Batch insert error at offset ${i}: ${error.message}`);
-    } else {
+    try {
+      await db.insert(transactions).values(batch);
       transactionsImported += batch.length;
+    } catch (err) {
+      errors.push(
+        `Batch insert error at offset ${i}: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
     }
   }
 
-  // 5. Update import session
-  await supabase
-    .from("import_sessions")
-    .update({
-      transaction_count: transactionsImported,
+  await db
+    .update(importSessions)
+    .set({
+      transactionCount: transactionsImported,
       status: "completed",
     })
-    .eq("id", session.id);
+    .where(eq(importSessions.id, session.id));
 
   revalidatePath("/import");
   revalidatePath("/insights");
@@ -242,34 +231,28 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
 }
 
 export async function rollbackImport(sessionId: string): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
-  await supabase.from("transactions").delete().eq("import_session_id", sessionId);
+  await db
+    .delete(transactions)
+    .where(eq(transactions.importSessionId, sessionId));
 
-  await supabase
-    .from("import_sessions")
-    .update({ status: "rolled_back" })
-    .eq("id", sessionId);
+  await db
+    .update(importSessions)
+    .set({ status: "rolled_back" })
+    .where(eq(importSessions.id, sessionId));
 
   revalidatePath("/import");
   revalidatePath("/insights");
 }
 
 export async function getImportSessions() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireUser();
 
-  const { data } = await supabase
-    .from("import_sessions")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const rows = await db
+    .select()
+    .from(importSessions)
+    .orderBy(importSessions.createdAt);
 
-  return data ?? [];
+  return rows;
 }
