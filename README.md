@@ -57,7 +57,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-> **Note:** In development without oauth2-proxy, requests will return 401. You can temporarily modify `src/middleware.ts` to pass through requests, or set up a local oauth2-proxy instance.
+> **Note:** Authentication currently requires oauth2-proxy headers. In development without a proxy, requests will return 401. You can temporarily modify `src/middleware.ts` to pass through requests. A local login fallback is on the [roadmap](#roadmap).
 
 ### Environment Variables
 
@@ -124,19 +124,20 @@ The app is designed for self-hosting with Docker behind oauth2-proxy.
 ### Architecture
 
 ```
-Internet → Nginx Proxy Manager → oauth2-proxy → Cashflow (Docker)
-                                                      ↓
-                                                 PostgreSQL
+Internet → Reverse Proxy → oauth2-proxy → Cashflow (Docker)
+                                                ↓
+                                           PostgreSQL
 ```
 
 ### Deploy Flow
 
 ```
-Push to branch → PR → Security checks pass → Auto-merge
+Push to branch → PR → Security checks pass → Merge
 → release-please opens Release PR → Checks pass → Auto-merge
 → Git tag created → GitHub Actions builds Docker image → GHCR
-→ Watchtower pulls new image on Unraid
 ```
+
+Use a container management tool like [Watchtower](https://containrrr.dev/watchtower/) to automatically pull new images, or pull manually with `docker pull`.
 
 ### Docker
 
@@ -151,7 +152,9 @@ docker run -p 3000:3000 \
 
 ### oauth2-proxy Integration
 
-The app reads user identity from headers set by Nginx after oauth2-proxy authentication:
+The app reads user identity from headers set by your reverse proxy after oauth2-proxy authentication. It supports both `X-User`/`X-Email` and `X-Forwarded-User`/`X-Forwarded-Email` header conventions.
+
+Example nginx configuration with `auth_request`:
 
 ```nginx
 auth_request_set $user   $upstream_http_x_auth_request_user;
@@ -172,6 +175,7 @@ proxy_set_header X-Email $email;
 
 ## Roadmap
 
+- [ ] Local login fallback — email/password auth for use without oauth2-proxy
 - [ ] "What-if" scenarios — duplicate projections with modified events
 - [ ] Account transfer events (move money without double-counting)
 - [ ] Event templates for common recurring items
