@@ -36,7 +36,7 @@ jobs:
       - name: Logout from Docker Hub
         run: docker logout
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: false
