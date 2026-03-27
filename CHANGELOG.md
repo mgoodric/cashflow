@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/mgoodric/cashflow/compare/v2.0.2...v2.1.0) (2026-03-27)
+
+
+### Features
+
+* add test suite with Vitest and CI pipeline gate ([751f3a0](https://github.com/mgoodric/cashflow/commit/751f3a06b707868638e447e99c71b6a283af44b8))
+* add test suite with Vitest and CI pipeline gate ([cfc599c](https://github.com/mgoodric/cashflow/commit/cfc599ca7967588a992fb2bb2fcd9a45d3015893))
+
+
+### Bug Fixes
+
+* logout from Docker Hub before trivy build to avoid 401 ([d913ba0](https://github.com/mgoodric/cashflow/commit/d913ba077fbeb0da997ad43f5dd1df466a8a6477))
+
 ## [2.0.2](https://github.com/mgoodric/cashflow/compare/v2.0.1...v2.0.2) (2026-03-24)
 
 
