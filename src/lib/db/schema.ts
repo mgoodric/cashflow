@@ -54,6 +54,44 @@ export const cashflowEvents = pgTable("cashflow_events", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const scenarios = pgTable("scenarios", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  balanceAdjustments: jsonb("balance_adjustments"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const scenarioEvents = pgTable("scenario_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scenarioId: uuid("scenario_id").references(() => scenarios.id, { onDelete: "cascade" }).notNull(),
+  eventId: uuid("event_id").references(() => cashflowEvents.id, { onDelete: "cascade" }),
+  action: text("action").notNull(), // 'exclude' | 'modify' | 'add'
+  name: text("name"),
+  eventType: text("event_type"),
+  amount: numeric("amount", { precision: 12, scale: 2 }),
+  eventDate: date("event_date"),
+  accountId: uuid("account_id").references(() => accounts.id),
+  isRecurring: boolean("is_recurring"),
+  recurrenceRule: jsonb("recurrence_rule"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const eventOverrides = pgTable("event_overrides", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: uuid("event_id").references(() => cashflowEvents.id, { onDelete: "cascade" }).notNull(),
+  originalDate: date("original_date").notNull(),
+  overrideAmount: numeric("override_amount", { precision: 12, scale: 2 }),
+  overrideDate: date("override_date"),
+  isSkipped: boolean("is_skipped").default(false).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const importSessions = pgTable("import_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id).notNull(),

@@ -8,6 +8,20 @@
       "when": 1774326053390,
       "tag": "0000_dapper_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777138332679,
+      "tag": "0001_large_joseph",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777139047121,
+      "tag": "0002_nosy_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

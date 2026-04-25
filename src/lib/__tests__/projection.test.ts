@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeProjection } from "../projection";
-import type { Account, CashflowEvent } from "../types/database";
+import type { Account, CashflowEvent, EventOverride } from "../types/database";
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
@@ -213,5 +213,164 @@ describe("computeProjection", () => {
     // 1000 - 100 + 200 = 1100
     expect(result.dataPoints[1].balance).toBe(1100);
     expect(result.dataPoints[1].events).toHaveLength(2);
+  });
+});
+
+function makeOverride(overrides: Partial<EventOverride> = {}): EventOverride {
+  return {
+    id: "ovr-1",
+    event_id: "evt-1",
+    original_date: "2026-02-15",
+    override_amount: null,
+    override_date: null,
+    is_skipped: false,
+    notes: null,
+    created_at: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("computeProjection with overrides", () => {
+  it("overrides amount on a specific occurrence", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 5000 })],
+      [
+        makeEvent({
+          event_date: "2026-01-15",
+          amount: 1000,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15 },
+        }),
+      ],
+      "2026-01-01",
+      "2026-03-31",
+      undefined,
+      [makeOverride({ event_id: "evt-1", original_date: "2026-02-15", override_amount: 500 })]
+    );
+
+    const feb15 = result.dataPoints.find((dp) => dp.date === "2026-02-15");
+    expect(feb15?.events[0].amount).toBe(500);
+    // 5000 - 1000 (Jan) - 500 (Feb) - 1000 (Mar) = 2500
+    expect(result.dataPoints[result.dataPoints.length - 1].balance).toBe(2500);
+  });
+
+  it("shifts occurrence date via override", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 5000 })],
+      [
+        makeEvent({
+          event_date: "2026-01-15",
+          amount: 1000,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15 },
+        }),
+      ],
+      "2026-01-01",
+      "2026-03-31",
+      undefined,
+      [makeOverride({ event_id: "evt-1", original_date: "2026-02-15", override_date: "2026-02-17" })]
+    );
+
+    // Feb 15 should have no events, Feb 17 should have the event
+    const feb15 = result.dataPoints.find((dp) => dp.date === "2026-02-15");
+    expect(feb15?.events).toHaveLength(0);
+    const feb17 = result.dataPoints.find((dp) => dp.date === "2026-02-17");
+    expect(feb17?.events).toHaveLength(1);
+    expect(feb17?.events[0].amount).toBe(1000);
+  });
+
+  it("skips occurrence via override", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 5000 })],
+      [
+        makeEvent({
+          event_date: "2026-01-15",
+          amount: 1000,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15 },
+        }),
+      ],
+      "2026-01-01",
+      "2026-03-31",
+      undefined,
+      [makeOverride({ event_id: "evt-1", original_date: "2026-02-15", is_skipped: true })]
+    );
+
+    const feb15 = result.dataPoints.find((dp) => dp.date === "2026-02-15");
+    expect(feb15?.events).toHaveLength(0);
+    // 5000 - 1000 (Jan) - 0 (Feb skipped) - 1000 (Mar) = 3000
+    expect(result.dataPoints[result.dataPoints.length - 1].balance).toBe(3000);
+  });
+
+  it("non-overridden occurrences remain unchanged", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 5000 })],
+      [
+        makeEvent({
+          event_date: "2026-01-15",
+          amount: 1000,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15 },
+        }),
+      ],
+      "2026-01-01",
+      "2026-03-31",
+      undefined,
+      [makeOverride({ event_id: "evt-1", original_date: "2026-02-15", override_amount: 500 })]
+    );
+
+    const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
+    expect(jan15?.events[0].amount).toBe(1000);
+    const mar15 = result.dataPoints.find((dp) => dp.date === "2026-03-15");
+    expect(mar15?.events[0].amount).toBe(1000);
+  });
+
+  it("change-forward: end_date + new event produces correct projection", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 5000 })],
+      [
+        // Original event ends before March
+        makeEvent({
+          event_date: "2026-01-15",
+          amount: 1000,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15, end_date: "2026-02-28" },
+        }),
+        // New event starts in March with different amount
+        makeEvent({
+          id: "evt-2",
+          event_date: "2026-03-15",
+          amount: 750,
+          is_recurring: true,
+          recurrence_rule: { frequency: "monthly", interval: 1, day_of_month: 15 },
+        }),
+      ],
+      "2026-01-01",
+      "2026-04-30"
+    );
+
+    const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
+    expect(jan15?.events[0].amount).toBe(1000);
+    const feb15 = result.dataPoints.find((dp) => dp.date === "2026-02-15");
+    expect(feb15?.events[0].amount).toBe(1000);
+    const mar15 = result.dataPoints.find((dp) => dp.date === "2026-03-15");
+    expect(mar15?.events[0].amount).toBe(750);
+    const apr15 = result.dataPoints.find((dp) => dp.date === "2026-04-15");
+    expect(apr15?.events[0].amount).toBe(750);
+  });
+
+  it("does not affect non-recurring events", () => {
+    const result = computeProjection(
+      [makeAccount({ current_balance: 1000 })],
+      [makeEvent({ event_date: "2026-01-15", amount: 100 })],
+      "2026-01-01",
+      "2026-01-31",
+      undefined,
+      [makeOverride({ event_id: "evt-1", original_date: "2026-01-15", override_amount: 999 })]
+    );
+
+    // Non-recurring events ignore overrides
+    const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
+    expect(jan15?.events[0].amount).toBe(100);
   });
 });

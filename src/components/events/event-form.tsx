@@ -10,26 +10,39 @@ import { RecurrenceFields } from "./recurrence-fields";
 import { SELECT_CLASS } from "@/lib/constants";
 import type { Account, Category, CashflowEvent, RecurrenceRule } from "@/lib/types/database";
 
+interface EventPrefill {
+  name?: string;
+  amount?: number;
+  event_type?: "income" | "expense";
+  is_recurring?: boolean;
+  frequency?: "monthly" | "quarterly" | "yearly";
+  day_of_month?: number;
+  account_id?: string;
+}
+
 interface EventFormProps {
   event?: CashflowEvent;
   accounts: Account[];
   categories?: Category[];
   action: (formData: FormData) => void;
   title: string;
+  prefill?: EventPrefill;
 }
 
-const defaultRule: RecurrenceRule = {
-  frequency: "monthly",
-  interval: 1,
-  day_of_month: 1,
-};
-
-export function EventForm({ event, accounts, categories = [], action, title }: EventFormProps) {
-  const [isRecurring, setIsRecurring] = useState(event?.is_recurring ?? false);
-  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(
-    event?.recurrence_rule ?? defaultRule
+export function EventForm({ event, accounts, categories = [], action, title, prefill }: EventFormProps) {
+  const [isRecurring, setIsRecurring] = useState(
+    event?.is_recurring ?? prefill?.is_recurring ?? false
   );
-  const [eventType, setEventType] = useState(event?.event_type ?? "expense");
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(
+    event?.recurrence_rule ?? {
+      frequency: prefill?.frequency ?? "monthly",
+      interval: 1,
+      day_of_month: prefill?.day_of_month ?? 1,
+    }
+  );
+  const [eventType, setEventType] = useState(
+    event?.event_type ?? prefill?.event_type ?? "expense"
+  );
   const [categoryId, setCategoryId] = useState(event?.category_id ?? "");
 
   return (
@@ -44,7 +57,7 @@ export function EventForm({ event, accounts, categories = [], action, title }: E
             <Input
               id="name"
               name="name"
-              defaultValue={event?.name}
+              defaultValue={event?.name ?? prefill?.name}
               required
             />
           </div>
@@ -54,7 +67,7 @@ export function EventForm({ event, accounts, categories = [], action, title }: E
             <select
               id="account_id"
               name="account_id"
-              defaultValue={event?.account_id}
+              defaultValue={event?.account_id ?? prefill?.account_id}
               required
               className={SELECT_CLASS}
             >
@@ -115,7 +128,7 @@ export function EventForm({ event, accounts, categories = [], action, title }: E
               type="number"
               step="0.01"
               min="0.01"
-              defaultValue={event?.amount}
+              defaultValue={event?.amount ?? prefill?.amount}
               required
             />
           </div>

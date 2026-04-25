@@ -1,4 +1,4 @@
-import type { Account, CashflowEvent, EventType, ProjectionDataPoint, ProjectionResult } from "./types/database";
+import type { Account, CashflowEvent, EventOverride, EventType, ProjectionDataPoint, ProjectionResult } from "./types/database";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -60,12 +60,24 @@ function getNextOccurrence(current: Date, event: CashflowEvent): Date | null {
   return next;
 }
 
+function buildOverrideMap(
+  overrides: EventOverride[]
+): Map<string, EventOverride> {
+  const map = new Map<string, EventOverride>();
+  for (const o of overrides) {
+    map.set(`${o.event_id}|${o.original_date}`, o);
+  }
+  return map;
+}
+
 function expandRecurringEvents(
   events: CashflowEvent[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  overrides: EventOverride[] = []
 ): Map<string, { name: string; amount: number; type: EventType }[]> {
   const eventMap = new Map<string, { name: string; amount: number; type: EventType }[]>();
+  const overrideMap = buildOverrideMap(overrides);
 
   function addToMap(dateStr: string, entry: { name: string; amount: number; type: EventType }) {
     const existing = eventMap.get(dateStr) || [];
@@ -73,23 +85,45 @@ function expandRecurringEvents(
     eventMap.set(dateStr, existing);
   }
 
+  function applyOverride(
+    event: CashflowEvent,
+    originalDateStr: string,
+    baseEntry: { name: string; amount: number; type: EventType }
+  ) {
+    const override = overrideMap.get(`${event.id}|${originalDateStr}`);
+    if (!override) {
+      addToMap(originalDateStr, baseEntry);
+      return;
+    }
+
+    if (override.is_skipped) return;
+
+    const amount = override.override_amount ?? baseEntry.amount;
+    const targetDate = override.override_date ?? originalDateStr;
+    const targetDateObj = new Date(targetDate + "T00:00:00Z");
+
+    if (targetDateObj >= startDate && targetDateObj <= endDate) {
+      addToMap(targetDate, { ...baseEntry, amount });
+    }
+  }
+
   for (const event of events) {
     if (!event.is_active) continue;
 
-    const entry = { name: event.name, amount: event.amount, type: event.event_type };
+    const baseEntry = { name: event.name, amount: event.amount, type: event.event_type };
     const eventDate = new Date(event.event_date + "T00:00:00Z");
 
     if (!event.is_recurring) {
       if (eventDate >= startDate && eventDate <= endDate) {
-        addToMap(event.event_date, entry);
+        addToMap(event.event_date, baseEntry);
       }
       continue;
     }
 
-    // Place the initial occurrence
+    // Place the initial occurrence (with override check)
     let current = eventDate;
     if (current >= startDate && current <= endDate) {
-      addToMap(event.event_date, entry);
+      applyOverride(event, event.event_date, baseEntry);
     }
 
     // Expand future occurrences
@@ -99,7 +133,7 @@ function expandRecurringEvents(
 
       if (next >= startDate) {
         const dateStr = next.toISOString().split("T")[0];
-        addToMap(dateStr, entry);
+        applyOverride(event, dateStr, baseEntry);
       }
       current = next;
     }
@@ -113,7 +147,8 @@ export function computeProjection(
   events: CashflowEvent[],
   startDate: string,
   endDate: string,
-  accountId?: string
+  accountId?: string,
+  overrides: EventOverride[] = []
 ): ProjectionResult {
   const filteredAccounts = accountId
     ? accounts.filter((a) => a.id === accountId)
@@ -128,7 +163,11 @@ export function computeProjection(
   const start = new Date(startDate + "T00:00:00Z");
   const end = new Date(endDate + "T00:00:00Z");
 
-  const eventMap = expandRecurringEvents(filteredEvents, start, end);
+  const filteredOverrides = accountId
+    ? overrides.filter((o) => filteredEvents.some((e) => e.id === o.event_id))
+    : overrides;
+
+  const eventMap = expandRecurringEvents(filteredEvents, start, end, filteredOverrides);
 
   const dataPoints: ProjectionDataPoint[] = [];
   const negativeDates: string[] = [];

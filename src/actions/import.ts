@@ -25,8 +25,8 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
     .insert(importSessions)
     .values({
       userId: user.id,
-      source: "qif",
-      filename: "import.qif",
+      source: payload.source,
+      filename: payload.filename,
       status: "pending",
     })
     .returning();
@@ -128,7 +128,10 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
     const accountId = accountIdMap.get(t.qifAccountName);
     if (!accountId) continue;
 
-    if (payload.skipTransfers && t.category.startsWith("[") && t.category.endsWith("]")) {
+    const isTransfer =
+      (t.category.startsWith("[") && t.category.endsWith("]")) ||
+      t.category.startsWith("Transfer:");
+    if (payload.skipTransfers && isTransfer) {
       continue;
     }
 
@@ -150,7 +153,7 @@ export async function executeImport(payload: ImportPayload): Promise<ImportResul
       memo: t.memo,
       checkNumber: t.checkNumber,
       transactionType: t.type,
-      source: "qif" as const,
+      source: payload.source,
       originalCategory: t.category || null,
     });
   }

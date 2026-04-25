@@ -46,6 +46,44 @@ export interface CashflowEvent {
   account?: Account;
 }
 
+export interface Scenario {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  balance_adjustments: Record<string, number> | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScenarioEvent {
+  id: string;
+  scenario_id: string;
+  event_id: string | null;
+  action: "exclude" | "modify" | "add";
+  name: string | null;
+  event_type: EventType | null;
+  amount: number | null;
+  event_date: string | null;
+  account_id: string | null;
+  is_recurring: boolean | null;
+  recurrence_rule: RecurrenceRule | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface EventOverride {
+  id: string;
+  event_id: string;
+  original_date: string;
+  override_amount: number | null;
+  override_date: string | null;
+  is_skipped: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface ImportSession {
   id: string;
   user_id: string;
@@ -82,6 +120,8 @@ export interface Transaction {
 }
 
 export interface ImportPayload {
+  source: "qif" | "csv";
+  filename: string;
   accountMappings: Array<{
     qifName: string;
     qifType: string;
