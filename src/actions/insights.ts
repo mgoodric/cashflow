@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { transactions, categories, cashflowEvents } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth";
 import { eq, inArray } from "drizzle-orm";
-import { toTransaction, toCategory } from "@/lib/db/mappers";
-import type { Transaction, Category, RecurrencePattern } from "@/lib/types/database";
+import { toTransaction, toCategory, toEvent } from "@/lib/db/mappers";
+import type { Transaction, Category, CashflowEvent, RecurrencePattern } from "@/lib/types/database";
 import { detectRecurringPatterns } from "@/lib/analysis/recurrence-detector";
 import { detectMisclassifications } from "@/lib/analysis/category-auditor";
 
@@ -158,4 +158,16 @@ export async function dismissFlags(transactionIds: string[]): Promise<void> {
     .where(inArray(transactions.id, transactionIds));
 
   revalidatePath("/insights");
+}
+
+export async function getExistingEvents(): Promise<CashflowEvent[]> {
+  const user = await requireUser();
+
+  const rows = await db
+    .select()
+    .from(cashflowEvents)
+    .where(eq(cashflowEvents.userId, user.id))
+    .orderBy(cashflowEvents.name);
+
+  return rows.map(toEvent);
 }

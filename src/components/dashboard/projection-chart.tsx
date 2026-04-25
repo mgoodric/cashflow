@@ -15,11 +15,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { computeProjection } from "@/lib/projection";
-import type { Account, CashflowEvent } from "@/lib/types/database";
+import { buildScenarioEvents, applyBalanceAdjustments } from "@/lib/scenario";
+import type { Account, CashflowEvent, EventOverride, Scenario, ScenarioEvent } from "@/lib/types/database";
 
 interface ProjectionChartProps {
   accounts: Account[];
   events: CashflowEvent[];
+  overrides?: EventOverride[];
+  scenarios?: Scenario[];
+  scenarioEvents?: ScenarioEvent[];
 }
 
 const timeRanges = [
@@ -76,25 +80,57 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
   );
 }
 
-export function ProjectionChart({ accounts, events }: ProjectionChartProps) {
+export function ProjectionChart({
+  accounts,
+  events,
+  overrides = [],
+  scenarios: availableScenarios = [],
+  scenarioEvents: allScenarioEvents = [],
+}: ProjectionChartProps) {
   const [selectedRange, setSelectedRange] = useState(90);
   const [selectedAccount, setSelectedAccount] = useState<string | undefined>(undefined);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>(undefined);
 
-  const projection = useMemo(() => {
+  const { projection, scenarioProjection, selectedScenario } = useMemo(() => {
     const today = new Date();
     const startDate = today.toISOString().split("T")[0];
     const end = new Date(today);
     end.setDate(end.getDate() + selectedRange);
     const endDate = end.toISOString().split("T")[0];
 
-    return computeProjection(accounts, events, startDate, endDate, selectedAccount);
-  }, [accounts, events, selectedRange, selectedAccount]);
+    const base = computeProjection(accounts, events, startDate, endDate, selectedAccount, overrides);
+
+    let scenProj = null;
+    let scen = null;
+
+    if (selectedScenarioId) {
+      scen = availableScenarios.find((s) => s.id === selectedScenarioId) ?? null;
+      if (scen) {
+        const scenEvts = allScenarioEvents.filter((se) => se.scenario_id === scen!.id);
+        const modifiedEvents = buildScenarioEvents(events, scenEvts);
+        const adjustedAccounts = applyBalanceAdjustments(accounts, scen);
+        scenProj = computeProjection(adjustedAccounts, modifiedEvents, startDate, endDate, selectedAccount, overrides);
+      }
+    }
+
+    return { projection: base, scenarioProjection: scenProj, selectedScenario: scen };
+  }, [accounts, events, selectedRange, selectedAccount, overrides, selectedScenarioId, availableScenarios, allScenarioEvents]);
 
   const hasNegative = projection.negativeDates.length > 0;
 
-  // Sample data points for readability (max ~60 ticks)
+  // Merge base and scenario data for the chart
   const sampleInterval = Math.max(1, Math.floor(projection.dataPoints.length / 60));
-  const chartData = projection.dataPoints.filter((_, i) => i % sampleInterval === 0 || i === projection.dataPoints.length - 1);
+  const chartData = projection.dataPoints
+    .filter((_, i) => i % sampleInterval === 0 || i === projection.dataPoints.length - 1)
+    .map((dp) => {
+      const scenarioDp = scenarioProjection?.dataPoints.find((s) => s.date === dp.date);
+      return {
+        ...dp,
+        scenarioBalance: scenarioDp?.balance,
+      };
+    });
+
+  const isComparing = scenarioProjection !== null;
 
   return (
     <Card>
@@ -108,7 +144,19 @@ export function ProjectionChart({ accounts, events }: ProjectionChartProps) {
               </Badge>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {availableScenarios.length > 0 && (
+              <select
+                value={selectedScenarioId ?? ""}
+                onChange={(e) => setSelectedScenarioId(e.target.value || undefined)}
+                className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+              >
+                <option value="">No Scenario</option>
+                {availableScenarios.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            )}
             <select
               value={selectedAccount ?? ""}
               onChange={(e) => setSelectedAccount(e.target.value || undefined)}
@@ -141,6 +189,10 @@ export function ProjectionChart({ accounts, events }: ProjectionChartProps) {
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="scenarioGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
@@ -162,17 +214,46 @@ export function ProjectionChart({ accounts, events }: ProjectionChartProps) {
                 stroke="#22c55e"
                 fill="url(#positiveGradient)"
                 strokeWidth={2}
+                name="Current"
               />
+              {isComparing && (
+                <Area
+                  type="monotone"
+                  dataKey="scenarioBalance"
+                  stroke="#8b5cf6"
+                  fill="url(#scenarioGradient)"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  name={selectedScenario?.name ?? "Scenario"}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-4 flex gap-4 text-sm text-gray-500">
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500">
           <span>
             Lowest: <strong className={projection.lowestBalance < 0 ? "text-red-600" : ""}>
               {formatCurrency(projection.lowestBalance)}
             </strong> on {formatDate(projection.lowestBalanceDate)}
           </span>
+          {isComparing && selectedScenario && scenarioProjection && (
+            <span>
+              {selectedScenario.name} lowest: <strong className={scenarioProjection.lowestBalance < 0 ? "text-red-600" : "text-purple-600"}>
+                {formatCurrency(scenarioProjection.lowestBalance)}
+              </strong> on {formatDate(scenarioProjection.lowestBalanceDate)}
+            </span>
+          )}
         </div>
+        {isComparing && (
+          <div className="mt-2 flex gap-4 text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-0.5 w-4 bg-green-500" /> Current
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-0.5 w-4 border-t-2 border-dashed border-purple-500" /> {selectedScenario?.name}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

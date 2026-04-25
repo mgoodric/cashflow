@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { accounts, cashflowEvents, categories } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { accounts, cashflowEvents, categories, eventOverrides, scenarios, scenarioEvents } from "@/lib/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
-import { toAccount, toEvent, toCategory } from "@/lib/db/mappers";
+import { toAccount, toEvent, toCategory, toEventOverride, toScenario, toScenarioEvent } from "@/lib/db/mappers";
 import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { ProjectionChart } from "@/components/dashboard/projection-chart";
 import { AccountSummaryCard } from "@/components/dashboard/account-summary-card";
@@ -20,6 +20,28 @@ export default async function DashboardPage() {
   const accts = accountRows.map(toAccount);
   const evts = eventRows.map(toEvent);
   const cats = categoryRows.map(toCategory);
+
+  // Fetch overrides for all active events
+  const eventIds = evts.map((e) => e.id);
+  const overrideRows = eventIds.length > 0
+    ? await db.select().from(eventOverrides).where(inArray(eventOverrides.eventId, eventIds))
+    : [];
+  const ovrs = overrideRows.map(toEventOverride);
+
+  // Fetch scenarios for comparison selector
+  const scenarioRows = await db
+    .select()
+    .from(scenarios)
+    .where(eq(scenarios.userId, user.id))
+    .orderBy(scenarios.name);
+  const scens = scenarioRows.map(toScenario);
+
+  // Pre-fetch all scenario events for available scenarios
+  const scenarioIds = scens.map((s) => s.id);
+  const scenEventRows = scenarioIds.length > 0
+    ? await db.select().from(scenarioEvents).where(inArray(scenarioEvents.scenarioId, scenarioIds))
+    : [];
+  const scenEvts = scenEventRows.map(toScenarioEvent);
 
   const totalBalance = accts.reduce((sum, a) => sum + a.current_balance, 0);
 
@@ -55,7 +77,13 @@ export default async function DashboardPage() {
         activeAccounts={accts.length}
       />
 
-      <ProjectionChart accounts={accts} events={evts} />
+      <ProjectionChart
+        accounts={accts}
+        events={evts}
+        overrides={ovrs}
+        scenarios={scens}
+        scenarioEvents={scenEvts}
+      />
 
       <SankeyChart events={evts} categories={cats} />
 

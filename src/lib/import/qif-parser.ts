@@ -1,5 +1,6 @@
 import { deserializeQif, type QifData, QifType } from "qif-ts";
 import type { AccountType } from "@/lib/types/database";
+import { extractCategoriesFromTransactions } from "./category-extractor";
 
 export interface ParsedQifAccount {
   name: string;
@@ -43,34 +44,6 @@ const QIF_TYPE_TO_ACCOUNT_TYPE: Record<string, AccountType> = {
 
 function extractAccountType(qifType: string): AccountType {
   return QIF_TYPE_TO_ACCOUNT_TYPE[qifType] ?? "checking";
-}
-
-function extractCategoriesFromTransactions(
-  transactions: ParsedQifTransaction[]
-): ParsedQifCategory[] {
-  const categoryPaths = new Set<string>();
-
-  for (const t of transactions) {
-    if (t.category && !t.isTransfer) {
-      categoryPaths.add(t.category);
-      // Also add parent paths
-      const parts = t.category.split(":");
-      for (let i = 1; i < parts.length; i++) {
-        categoryPaths.add(parts.slice(0, i).join(":"));
-      }
-    }
-  }
-
-  return Array.from(categoryPaths)
-    .sort()
-    .map((path) => {
-      const parts = path.split(":");
-      return {
-        path,
-        name: parts[parts.length - 1],
-        parentPath: parts.length > 1 ? parts.slice(0, -1).join(":") : null,
-      };
-    });
 }
 
 export function parseQifContent(content: string): ParsedQifFile {

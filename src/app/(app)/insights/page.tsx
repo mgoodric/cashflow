@@ -18,6 +18,13 @@ export default async function InsightsPage() {
 
   const features = [
     {
+      title: "Analyze Quicken Data",
+      description:
+        "Upload Quicken CSV exports to discover recurring patterns and spending trends without importing transactions. Find what's missing from your forecasting.",
+      href: "/insights/analyze",
+      context: "No import required",
+    },
+    {
       title: "Detect Recurring Patterns",
       description:
         "Analyze your transaction history to find recurring payments and income. Convert detected patterns into cashflow events for accurate forecasting.",

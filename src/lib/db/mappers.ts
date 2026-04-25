@@ -1,11 +1,14 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { accounts, cashflowEvents, categories, transactions } from "./schema";
-import type { Account, CashflowEvent, Category, Transaction } from "@/lib/types/database";
+import type { accounts, cashflowEvents, categories, transactions, eventOverrides, scenarios, scenarioEvents } from "./schema";
+import type { Account, CashflowEvent, Category, Transaction, EventOverride, Scenario, ScenarioEvent } from "@/lib/types/database";
 
 type AccountRow = InferSelectModel<typeof accounts>;
 type EventRow = InferSelectModel<typeof cashflowEvents>;
 type CategoryRow = InferSelectModel<typeof categories>;
 type TransactionRow = InferSelectModel<typeof transactions>;
+type EventOverrideRow = InferSelectModel<typeof eventOverrides>;
+type ScenarioRow = InferSelectModel<typeof scenarios>;
+type ScenarioEventRow = InferSelectModel<typeof scenarioEvents>;
 
 export function toAccount(r: AccountRow): Account {
   return {
@@ -71,6 +74,50 @@ export function toTransaction(r: TransactionRow): Transaction {
     original_category: r.originalCategory,
     is_flagged: r.isFlagged,
     flag_reason: r.flagReason,
+    created_at: r.createdAt.toISOString(),
+  };
+}
+
+export function toEventOverride(r: EventOverrideRow): EventOverride {
+  return {
+    id: r.id,
+    event_id: r.eventId,
+    original_date: r.originalDate,
+    override_amount: r.overrideAmount ? Number(r.overrideAmount) : null,
+    override_date: r.overrideDate,
+    is_skipped: r.isSkipped,
+    notes: r.notes,
+    created_at: r.createdAt.toISOString(),
+  };
+}
+
+export function toScenario(r: ScenarioRow): Scenario {
+  return {
+    id: r.id,
+    user_id: r.userId,
+    name: r.name,
+    description: r.description,
+    balance_adjustments: r.balanceAdjustments as Record<string, number> | null,
+    is_active: r.isActive,
+    created_at: r.createdAt.toISOString(),
+    updated_at: r.updatedAt.toISOString(),
+  };
+}
+
+export function toScenarioEvent(r: ScenarioEventRow): ScenarioEvent {
+  return {
+    id: r.id,
+    scenario_id: r.scenarioId,
+    event_id: r.eventId,
+    action: r.action as ScenarioEvent["action"],
+    name: r.name,
+    event_type: r.eventType as ScenarioEvent["event_type"],
+    amount: r.amount ? Number(r.amount) : null,
+    event_date: r.eventDate,
+    account_id: r.accountId,
+    is_recurring: r.isRecurring,
+    recurrence_rule: r.recurrenceRule as ScenarioEvent["recurrence_rule"],
+    notes: r.notes,
     created_at: r.createdAt.toISOString(),
   };
 }

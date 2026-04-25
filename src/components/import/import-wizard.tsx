@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { SELECT_CLASS } from "@/lib/constants";
 import { parseQifContent } from "@/lib/import/qif-parser";
+import { parseCsvContent } from "@/lib/import/csv-parser";
 import type {
   ParsedQifFile,
   ParsedQifAccount,
@@ -124,6 +125,7 @@ export function ImportWizard({
 }: ImportWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [importSource, setImportSource] = useState<"qif" | "csv">("qif");
   const [parsedFile, setParsedFile] = useState<ParsedQifFile | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [accountMappings, setAccountMappings] = useState<AccountMapping[]>([]);
@@ -150,8 +152,11 @@ export function ImportWizard({
   const processFile = useCallback(
     (file: File) => {
       setParseError(null);
-      if (!file.name.toLowerCase().endsWith(".qif")) {
-        setParseError("Only .qif files are supported.");
+      const lowerName = file.name.toLowerCase();
+      const isQif = lowerName.endsWith(".qif");
+      const isCsv = lowerName.endsWith(".csv");
+      if (!isQif && !isCsv) {
+        setParseError("Only .qif and .csv files are supported.");
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
@@ -159,11 +164,12 @@ export function ImportWizard({
         return;
       }
       setFileName(file.name);
+      setImportSource(isCsv ? "csv" : "qif");
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const content = e.target?.result as string;
-          const parsed = parseQifContent(content);
+          const parsed = isCsv ? parseCsvContent(content) : parseQifContent(content);
           setParsedFile(parsed);
 
           // Initialize account mappings with auto-matching
@@ -210,7 +216,7 @@ export function ImportWizard({
           }
         } catch {
           setParseError(
-            "Failed to parse QIF file. The file may be corrupted or in an unsupported format."
+            `Failed to parse ${isCsv ? "CSV" : "QIF"} file. The file may be corrupted or in an unsupported format.`
           );
         }
       };
@@ -310,6 +316,8 @@ export function ImportWizard({
         }));
 
       const payload: ImportPayload = {
+        source: importSource,
+        filename: fileName ?? `import.${importSource}`,
         accountMappings: accountMappings.map((m) => ({
           qifName: m.qifName,
           qifType: m.qifType,
@@ -420,7 +428,7 @@ export function ImportWizard({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Upload QIF File</CardTitle>
+          <CardTitle>Upload File</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
@@ -457,7 +465,7 @@ export function ImportWizard({
             ) : (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">
-                  Drag and drop a .qif file here
+                  Drag and drop a .qif or .csv file here
                 </p>
                 <p className="text-xs text-gray-500">
                   or click to browse (max 10MB)
@@ -467,7 +475,7 @@ export function ImportWizard({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".qif"
+              accept=".qif,.csv"
               onChange={handleFileInput}
               className="hidden"
             />
@@ -877,7 +885,7 @@ export function ImportWizard({
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               <p className="text-sm text-gray-500">
-                Processing your QIF file. This may take a moment for large files.
+                Processing your file. This may take a moment for large files.
               </p>
             </div>
           </CardContent>
