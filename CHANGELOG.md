@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/mgoodric/cashflow/compare/v2.1.0...v2.2.0) (2026-04-25)
+
+
+### Features
+
+* add CSV import, event overrides, and what-if scenario modeling ([#47](https://github.com/mgoodric/cashflow/issues/47)) ([fd6f91e](https://github.com/mgoodric/cashflow/commit/fd6f91ef576bc4d5c8de96cc26b98e1804aa10bc))
+
 ## [2.1.0](https://github.com/mgoodric/cashflow/compare/v2.0.2...v2.1.0) (2026-03-27)
 
 
