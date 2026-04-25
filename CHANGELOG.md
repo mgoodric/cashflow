@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/mgoodric/cashflow/compare/v2.4.0...v2.4.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* use RELEASE_TOKEN for auto-merge to trigger subsequent workflows ([6e8de1a](https://github.com/mgoodric/cashflow/commit/6e8de1ad3183270746bc796585db9f94d087f487))
+
 ## [2.4.0](https://github.com/mgoodric/cashflow/compare/v2.3.0...v2.4.0) (2026-04-25)
 
 
