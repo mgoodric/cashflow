@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/mgoodric/cashflow/compare/v2.3.0...v2.4.0) (2026-04-25)
+
+
+### Features
+
+* add Excel-style editable transaction spreadsheet page ([#52](https://github.com/mgoodric/cashflow/issues/52)) ([a72484b](https://github.com/mgoodric/cashflow/commit/a72484b6803de5259d878273bf9cca1b4596a296))
+
 ## [2.3.0](https://github.com/mgoodric/cashflow/compare/v2.2.0...v2.3.0) (2026-04-25)
 
 
