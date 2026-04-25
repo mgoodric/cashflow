@@ -1,6 +1,6 @@
 {
   "name": "cashflow-temp",
-  "version": "2.2.0",
+  "version": "2.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -20,10 +20,12 @@
     "lucide-react": "^0.577.0",
     "next": "16.2.1",
     "papaparse": "^5.5.3",
+    "plaid": "^42.1.0",
     "postgres": "^3.4.8",
     "qif-ts": "^1.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-plaid-link": "^4.1.1",
     "recharts": "^3.8.1",
     "shadcn": "^4.1.0",
     "tailwind-merge": "^3.5.0",

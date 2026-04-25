@@ -1,4 +1,5 @@
-import type { Account, CashflowEvent, EventOverride, EventType, ProjectionDataPoint, ProjectionResult } from "./types/database";
+import type { Account, CashflowEvent, EventOverride, EventType, LoanConfig, ProjectionDataPoint, ProjectionResult } from "./types/database";
+import { computeLoanPayment } from "./loan";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -74,7 +75,8 @@ function expandRecurringEvents(
   events: CashflowEvent[],
   startDate: Date,
   endDate: Date,
-  overrides: EventOverride[] = []
+  overrides: EventOverride[] = [],
+  accountId?: string
 ): Map<string, { name: string; amount: number; type: EventType }[]> {
   const eventMap = new Map<string, { name: string; amount: number; type: EventType }[]>();
   const overrideMap = buildOverrideMap(overrides);
@@ -110,7 +112,17 @@ function expandRecurringEvents(
   for (const event of events) {
     if (!event.is_active) continue;
 
-    const baseEntry = { name: event.name, amount: event.amount, type: event.event_type };
+    // For transfers, resolve to income or expense based on account context
+    let effectiveType: EventType = event.event_type;
+    if (event.event_type === "transfer") {
+      if (accountId && accountId === event.destination_account_id) {
+        effectiveType = "income";
+      } else {
+        effectiveType = "expense";
+      }
+    }
+
+    const baseEntry = { name: event.name, amount: event.amount, type: effectiveType };
     const eventDate = new Date(event.event_date + "T00:00:00Z");
 
     if (!event.is_recurring) {
@@ -142,6 +154,46 @@ function expandRecurringEvents(
   return eventMap;
 }
 
+/**
+ * Check if a given date matches a recurring event's schedule.
+ */
+function isPaymentDate(date: Date, event: CashflowEvent): boolean {
+  const rule = event.recurrence_rule;
+  if (!rule) return false;
+
+  const eventDate = new Date(event.event_date + "T00:00:00Z");
+  if (date < eventDate) return false;
+
+  const endDate = rule.end_date ? new Date(rule.end_date + "T00:00:00Z") : null;
+  if (endDate && date > endDate) return false;
+
+  const dayOfMonth = rule.day_of_month ?? eventDate.getUTCDate();
+
+  switch (rule.frequency) {
+    case "monthly": {
+      const maxDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+      const targetDay = Math.min(dayOfMonth, maxDay);
+      return date.getUTCDate() === targetDay;
+    }
+    case "quarterly": {
+      const eventMonth = eventDate.getUTCMonth();
+      const currentMonth = date.getUTCMonth();
+      if ((currentMonth - eventMonth + 12) % 3 !== 0) return false;
+      const maxDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+      const targetDay = Math.min(dayOfMonth, maxDay);
+      return date.getUTCDate() === targetDay;
+    }
+    case "yearly": {
+      if (date.getUTCMonth() !== eventDate.getUTCMonth()) return false;
+      const maxDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+      const targetDay = Math.min(dayOfMonth, maxDay);
+      return date.getUTCDate() === targetDay;
+    }
+    default:
+      return false;
+  }
+}
+
 export function computeProjection(
   accounts: Account[],
   events: CashflowEvent[],
@@ -155,7 +207,7 @@ export function computeProjection(
     : accounts;
 
   const filteredEvents = accountId
-    ? events.filter((e) => e.account_id === accountId)
+    ? events.filter((e) => e.account_id === accountId || (e.event_type === "transfer" && e.destination_account_id === accountId))
     : events;
 
   let balance = filteredAccounts.reduce((sum, a) => sum + Number(a.current_balance), 0);
@@ -163,11 +215,26 @@ export function computeProjection(
   const start = new Date(startDate + "T00:00:00Z");
   const end = new Date(endDate + "T00:00:00Z");
 
+  // Separate loan events from regular events
+  const loanEvents = filteredEvents.filter(
+    (e) => e.loan_config && e.is_recurring
+  );
+  const regularEvents = filteredEvents.filter(
+    (e) => !(e.loan_config && e.is_recurring)
+  );
+
   const filteredOverrides = accountId
-    ? overrides.filter((o) => filteredEvents.some((e) => e.id === o.event_id))
+    ? overrides.filter((o) => regularEvents.some((e) => e.id === o.event_id))
     : overrides;
 
-  const eventMap = expandRecurringEvents(filteredEvents, start, end, filteredOverrides);
+  const eventMap = expandRecurringEvents(regularEvents, start, end, filteredOverrides, accountId);
+
+  // Track loan balances per loan event, starting from the account's current balance
+  const loanBalances = new Map<string, number>();
+  for (const loan of loanEvents) {
+    const account = filteredAccounts.find((a) => a.id === loan.account_id);
+    loanBalances.set(loan.id, account ? Math.abs(account.current_balance) : 0);
+  }
 
   const dataPoints: ProjectionDataPoint[] = [];
   const negativeDates: string[] = [];
@@ -179,6 +246,7 @@ export function computeProjection(
     const dateStr = current.toISOString().split("T")[0];
     const dayEvents = eventMap.get(dateStr) || [];
 
+    // Process regular events
     for (const evt of dayEvents) {
       if (evt.type === "income") {
         balance += evt.amount;
@@ -187,7 +255,38 @@ export function computeProjection(
       }
     }
 
-    dataPoints.push({ date: dateStr, balance: Math.round(balance * 100) / 100, events: dayEvents });
+    // Process loan payment events dynamically
+    const loanDayEvents: { name: string; amount: number; type: EventType }[] = [];
+    for (const loan of loanEvents) {
+      if (!loan.is_active) continue;
+      if (!isPaymentDate(current, loan)) continue;
+
+      const loanBalance = loanBalances.get(loan.id) ?? 0;
+      if (loanBalance <= 0) continue;
+
+      const result = computeLoanPayment(
+        loanBalance,
+        loan.loan_config as LoanConfig,
+        current
+      );
+
+      loanBalances.set(loan.id, result.newBalance);
+      balance -= result.totalPayment;
+
+      loanDayEvents.push({
+        name: loan.name,
+        amount: result.totalPayment,
+        type: "expense" as EventType,
+      });
+    }
+
+    const allDayEvents = [...dayEvents, ...loanDayEvents];
+
+    dataPoints.push({
+      date: dateStr,
+      balance: Math.round(balance * 100) / 100,
+      events: allDayEvents,
+    });
 
     if (balance < 0) {
       negativeDates.push(dateStr);

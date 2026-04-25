@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { cashflowEvents, accounts } from "@/lib/db/schema";
+import { cashflowEvents, accounts, categories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { toAccount } from "@/lib/db/mappers";
@@ -16,13 +16,15 @@ export default async function EventsPage() {
     .select({
       event: cashflowEvents,
       account: accounts,
+      category: categories,
     })
     .from(cashflowEvents)
     .where(eq(cashflowEvents.userId, user.id))
     .leftJoin(accounts, eq(cashflowEvents.accountId, accounts.id))
+    .leftJoin(categories, eq(cashflowEvents.categoryId, categories.id))
     .orderBy(cashflowEvents.eventDate);
 
-  const events: CashflowEvent[] = rows.map(({ event: r, account: a }) => ({
+  const events = rows.map(({ event: r, account: a, category: c }) => ({
     id: r.id,
     user_id: r.userId,
     account_id: r.accountId,
@@ -33,11 +35,16 @@ export default async function EventsPage() {
     event_date: r.eventDate,
     is_recurring: r.isRecurring,
     recurrence_rule: r.recurrenceRule as CashflowEvent["recurrence_rule"],
+    destination_account_id: r.destinationAccountId ?? null,
+    loan_config: r.loanConfig as CashflowEvent["loan_config"],
+    actual_amount: r.actualAmount ? Number(r.actualAmount) : null,
+    occurred_date: r.occurredDate ?? null,
     notes: r.notes,
     is_active: r.isActive,
     created_at: r.createdAt.toISOString(),
     updated_at: r.updatedAt.toISOString(),
     account: a ? toAccount(a) : undefined,
+    category_name: c?.name ?? null,
   }));
 
   return (
@@ -65,7 +72,7 @@ export default async function EventsPage() {
       ) : (
         <div className="space-y-4">
           {events.map((event) => (
-            <EventCard key={event.id} event={event} />
+            <EventCard key={event.id} event={event} categoryName={event.category_name} />
           ))}
         </div>
       )}

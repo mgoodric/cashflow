@@ -10,9 +10,10 @@ async function testMiddleware(headers: Record<string, string>) {
 }
 
 describe("middleware", () => {
-  it("returns 401 when X-User header is missing", async () => {
+  it("redirects to /login when X-User header and session cookie are missing", async () => {
     const res = await testMiddleware({});
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/login");
   });
 
   it("passes through when X-User header is present", async () => {

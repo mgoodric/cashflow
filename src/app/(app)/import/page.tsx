@@ -17,7 +17,7 @@ export default async function ImportPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Import Transactions</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">
           Import transactions from QIF files exported from Quicken or other financial software
         </p>
       </div>

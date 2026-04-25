@@ -44,7 +44,7 @@ export default async function InsightsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Insights</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">
           Analyze your transaction data for patterns and improvements
         </p>
       </div>
@@ -58,7 +58,7 @@ export default async function InsightsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{feature.context}</span>
+                <span className="text-xs text-gray-400 dark:text-muted-foreground">{feature.context}</span>
                 <Link href={feature.href}>
                   <Button variant="outline" size="sm">
                     View

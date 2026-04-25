@@ -16,11 +16,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { computeProjection } from "@/lib/projection";
 import { buildScenarioEvents, applyBalanceAdjustments } from "@/lib/scenario";
-import type { Account, CashflowEvent, EventOverride, Scenario, ScenarioEvent } from "@/lib/types/database";
+import type { Account, CashflowEvent, Category, EventOverride, Scenario, ScenarioEvent } from "@/lib/types/database";
+
+const NO_CATEGORY = "__none__";
 
 interface ProjectionChartProps {
   accounts: Account[];
   events: CashflowEvent[];
+  categories?: Category[];
   overrides?: EventOverride[];
   scenarios?: Scenario[];
   scenarioEvents?: ScenarioEvent[];
@@ -81,15 +84,26 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
 }
 
 export function ProjectionChart({
-  accounts,
-  events,
-  overrides = [],
-  scenarios: availableScenarios = [],
-  scenarioEvents: allScenarioEvents = [],
+  accounts, events, categories = [], overrides = [],
+  scenarios: availableScenarios = [], scenarioEvents: allScenarioEvents = [],
 }: ProjectionChartProps) {
   const [selectedRange, setSelectedRange] = useState(90);
   const [selectedAccount, setSelectedAccount] = useState<string | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>(undefined);
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories]
+  );
+
+  const filteredEvents = useMemo(() => {
+    if (!selectedCategory) return events;
+    if (selectedCategory === NO_CATEGORY) {
+      return events.filter((e) => !e.category_id);
+    }
+    return events.filter((e) => e.category_id === selectedCategory);
+  }, [events, selectedCategory]);
 
   const { projection, scenarioProjection, selectedScenario } = useMemo(() => {
     const today = new Date();
@@ -98,39 +112,33 @@ export function ProjectionChart({
     end.setDate(end.getDate() + selectedRange);
     const endDate = end.toISOString().split("T")[0];
 
-    const base = computeProjection(accounts, events, startDate, endDate, selectedAccount, overrides);
+    const base = computeProjection(accounts, filteredEvents, startDate, endDate, selectedAccount, overrides);
 
     let scenProj = null;
     let scen = null;
-
     if (selectedScenarioId) {
       scen = availableScenarios.find((s) => s.id === selectedScenarioId) ?? null;
       if (scen) {
         const scenEvts = allScenarioEvents.filter((se) => se.scenario_id === scen!.id);
-        const modifiedEvents = buildScenarioEvents(events, scenEvts);
+        const modifiedEvents = buildScenarioEvents(filteredEvents, scenEvts);
         const adjustedAccounts = applyBalanceAdjustments(accounts, scen);
         scenProj = computeProjection(adjustedAccounts, modifiedEvents, startDate, endDate, selectedAccount, overrides);
       }
     }
 
     return { projection: base, scenarioProjection: scenProj, selectedScenario: scen };
-  }, [accounts, events, selectedRange, selectedAccount, overrides, selectedScenarioId, availableScenarios, allScenarioEvents]);
+  }, [accounts, filteredEvents, selectedRange, selectedAccount, overrides, selectedScenarioId, availableScenarios, allScenarioEvents]);
 
   const hasNegative = projection.negativeDates.length > 0;
+  const isComparing = scenarioProjection !== null;
 
-  // Merge base and scenario data for the chart
   const sampleInterval = Math.max(1, Math.floor(projection.dataPoints.length / 60));
   const chartData = projection.dataPoints
     .filter((_, i) => i % sampleInterval === 0 || i === projection.dataPoints.length - 1)
     .map((dp) => {
       const scenarioDp = scenarioProjection?.dataPoints.find((s) => s.date === dp.date);
-      return {
-        ...dp,
-        scenarioBalance: scenarioDp?.balance,
-      };
+      return { ...dp, scenarioBalance: scenarioDp?.balance };
     });
-
-  const isComparing = scenarioProjection !== null;
 
   return (
     <Card>
@@ -167,6 +175,17 @@ export function ProjectionChart({
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+            <select
+              value={selectedCategory ?? ""}
+              onChange={(e) => setSelectedCategory(e.target.value || undefined)}
+              className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+            >
+              <option value="">All Categories</option>
+              <option value={NO_CATEGORY}>(No Category)</option>
+              {sortedCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
             {timeRanges.map((range) => (
               <Button
                 key={range.days}
@@ -181,7 +200,7 @@ export function ProjectionChart({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[400px]">
+        <div className="h-[280px] sm:h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <defs>

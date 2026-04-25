@@ -1,6 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { accounts, cashflowEvents, categories, transactions, eventOverrides, scenarios, scenarioEvents } from "./schema";
-import type { Account, CashflowEvent, Category, Transaction, EventOverride, Scenario, ScenarioEvent } from "@/lib/types/database";
+import type { accounts, cashflowEvents, categories, transactions, eventOverrides, scenarios, scenarioEvents, eventTemplates, plaidItems } from "./schema";
+import type { Account, CashflowEvent, Category, Transaction, EventOverride, Scenario, ScenarioEvent, EventTemplate, PlaidItem } from "@/lib/types/database";
 
 type AccountRow = InferSelectModel<typeof accounts>;
 type EventRow = InferSelectModel<typeof cashflowEvents>;
@@ -9,6 +9,8 @@ type TransactionRow = InferSelectModel<typeof transactions>;
 type EventOverrideRow = InferSelectModel<typeof eventOverrides>;
 type ScenarioRow = InferSelectModel<typeof scenarios>;
 type ScenarioEventRow = InferSelectModel<typeof scenarioEvents>;
+type EventTemplateRow = InferSelectModel<typeof eventTemplates>;
+type PlaidItemRow = InferSelectModel<typeof plaidItems>;
 
 export function toAccount(r: AccountRow): Account {
   return {
@@ -36,6 +38,10 @@ export function toEvent(r: EventRow): CashflowEvent {
     event_date: r.eventDate,
     is_recurring: r.isRecurring,
     recurrence_rule: r.recurrenceRule as CashflowEvent["recurrence_rule"],
+    destination_account_id: r.destinationAccountId,
+    loan_config: r.loanConfig as CashflowEvent["loan_config"],
+    actual_amount: r.actualAmount ? Number(r.actualAmount) : null,
+    occurred_date: r.occurredDate,
     notes: r.notes,
     is_active: r.isActive,
     created_at: r.createdAt.toISOString(),
@@ -49,6 +55,7 @@ export function toCategory(r: CategoryRow): Category {
     user_id: r.userId,
     name: r.name,
     parent_id: r.parentId,
+    budget_limit: r.budgetLimit ? Number(r.budgetLimit) : null,
     created_at: r.createdAt.toISOString(),
   };
 }
@@ -119,5 +126,37 @@ export function toScenarioEvent(r: ScenarioEventRow): ScenarioEvent {
     recurrence_rule: r.recurrenceRule as ScenarioEvent["recurrence_rule"],
     notes: r.notes,
     created_at: r.createdAt.toISOString(),
+  };
+}
+
+export function toEventTemplate(r: EventTemplateRow): EventTemplate {
+  return {
+    id: r.id,
+    user_id: r.userId,
+    name: r.name,
+    event_type: r.eventType as EventTemplate["event_type"],
+    amount: Number(r.amount),
+    account_id: r.accountId,
+    category_id: r.categoryId,
+    is_recurring: r.isRecurring,
+    recurrence_rule: r.recurrenceRule as EventTemplate["recurrence_rule"],
+    notes: r.notes,
+    created_at: r.createdAt.toISOString(),
+  };
+}
+
+export function toPlaidItem(r: PlaidItemRow): PlaidItem {
+  return {
+    id: r.id,
+    user_id: r.userId,
+    item_id: r.itemId,
+    access_token: r.accessToken,
+    institution_id: r.institutionId,
+    institution_name: r.institutionName,
+    cursor: r.cursor,
+    account_id: r.accountId,
+    status: r.status,
+    created_at: r.createdAt.toISOString(),
+    updated_at: r.updatedAt.toISOString(),
   };
 }

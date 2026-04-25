@@ -48,3 +48,10 @@ export async function deleteAccount(id: string) {
   revalidatePath("/accounts");
   redirect("/accounts");
 }
+
+export async function reconcileAccount(accountId: string, actualBalance: number): Promise<void> {
+  await requireUser();
+  await db.update(accounts).set({ currentBalance: String(actualBalance), updatedAt: new Date() }).where(eq(accounts.id, accountId));
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+}

@@ -8,10 +8,12 @@ import type { CashflowEvent } from "@/lib/types/database";
 
 interface EventCardProps {
   event: CashflowEvent;
+  categoryName?: string | null;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, categoryName }: EventCardProps) {
   const isIncome = event.event_type === "income";
+  const endDate = event.recurrence_rule?.end_date;
 
   return (
     <Card>
@@ -25,6 +27,9 @@ export function EventCard({ event }: EventCardProps) {
             <Badge variant="secondary">
               {FREQUENCY_LABELS[event.recurrence_rule.frequency] || "Recurring"}
             </Badge>
+          )}
+          {event.loan_config && (
+            <Badge variant="outline">Loan</Badge>
           )}
         </div>
       </CardHeader>
@@ -40,7 +45,13 @@ export function EventCard({ event }: EventCardProps) {
             </p>
             <p className="text-sm text-gray-500">
               {event.account?.name} &middot; {new Date(event.event_date + "T00:00:00").toLocaleDateString()}
+              {endDate && (
+                <> &middot; ends {new Date(endDate + "T00:00:00").toLocaleDateString()}</>
+              )}
             </p>
+            {categoryName && (
+              <p className="text-xs text-gray-400 mt-1">{categoryName}</p>
+            )}
           </div>
           <div className="flex gap-2">
             <Link href={`/events/${event.id}/edit`}>

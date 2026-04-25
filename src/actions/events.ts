@@ -15,6 +15,7 @@ export async function createEvent(formData: FormData) {
   const isRecurring = formData.get("is_recurring") === "true";
   const recurrenceRuleJson = formData.get("recurrence_rule") as string;
   const categoryId = formData.get("category_id") as string;
+  const loanConfigJson = formData.get("loan_config") as string;
 
   await db.insert(cashflowEvents).values({
     userId: user.id,
@@ -26,6 +27,7 @@ export async function createEvent(formData: FormData) {
     eventDate: formData.get("event_date") as string,
     isRecurring,
     recurrenceRule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
+    loanConfig: loanConfigJson ? JSON.parse(loanConfigJson) : null,
     notes: (formData.get("notes") as string) || null,
   });
 
@@ -40,6 +42,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const isRecurring = formData.get("is_recurring") === "true";
   const recurrenceRuleJson = formData.get("recurrence_rule") as string;
   const categoryId = formData.get("category_id") as string;
+  const loanConfigJson = formData.get("loan_config") as string;
 
   await db
     .update(cashflowEvents)
@@ -52,6 +55,7 @@ export async function updateEvent(id: string, formData: FormData) {
       eventDate: formData.get("event_date") as string,
       isRecurring,
       recurrenceRule: isRecurring && recurrenceRuleJson ? JSON.parse(recurrenceRuleJson) : null,
+      loanConfig: loanConfigJson ? JSON.parse(loanConfigJson) : null,
       notes: (formData.get("notes") as string) || null,
       updatedAt: new Date(),
     })
