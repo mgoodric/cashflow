@@ -29,12 +29,6 @@ interface EventFormProps {
   prefill?: EventPrefill;
 }
 
-const defaultRule: RecurrenceRule = {
-  frequency: "monthly",
-  interval: 1,
-  day_of_month: 1,
-};
-
 export function EventForm({ event, accounts, categories = [], action, title, prefill }: EventFormProps) {
   const [isRecurring, setIsRecurring] = useState(
     event?.is_recurring ?? prefill?.is_recurring ?? false

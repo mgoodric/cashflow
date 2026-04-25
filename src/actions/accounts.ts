@@ -23,7 +23,7 @@ export async function createAccount(formData: FormData) {
 }
 
 export async function updateAccount(id: string, formData: FormData) {
-  const user = await requireUser();
+  await requireUser();
 
   await db
     .update(accounts)

@@ -87,10 +87,13 @@ export function ScenarioDetail({
   }, [scenarioEvents]);
 
   // Compute projections
-  const today = new Date().toISOString().split("T")[0];
-  const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
+  const { today, endDate } = useMemo(() => {
+    const now = new Date();
+    const t = now.toISOString().split("T")[0];
+    const end = new Date(now);
+    end.setDate(end.getDate() + 90);
+    return { today: t, endDate: end.toISOString().split("T")[0] };
+  }, []);
 
   const baseProjection = useMemo(
     () => computeProjection(accounts, baseEvents, today, endDate),

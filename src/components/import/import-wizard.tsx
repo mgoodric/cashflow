@@ -18,9 +18,6 @@ import { parseQifContent } from "@/lib/import/qif-parser";
 import { parseCsvContent } from "@/lib/import/csv-parser";
 import type {
   ParsedQifFile,
-  ParsedQifAccount,
-  ParsedQifCategory,
-  ParsedQifTransaction,
 } from "@/lib/import/qif-parser";
 import {
   detectDateFormat,
