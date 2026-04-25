@@ -29,6 +29,10 @@ function makeEvent(overrides: Partial<CashflowEvent> = {}): CashflowEvent {
     event_date: "2026-01-15",
     is_recurring: false,
     recurrence_rule: null,
+    destination_account_id: null,
+    loan_config: null,
+    actual_amount: null,
+    occurred_date: null,
     notes: null,
     is_active: true,
     created_at: "2026-01-01T00:00:00Z",
@@ -372,5 +376,32 @@ describe("computeProjection with overrides", () => {
     // Non-recurring events ignore overrides
     const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
     expect(jan15?.events[0].amount).toBe(100);
+  });
+});
+
+describe("computeProjection with transfers", () => {
+  it("transfer filtered by source account shows as expense", () => {
+    const result = computeProjection(
+      [makeAccount({ id: "acc-1", current_balance: 5000 }), makeAccount({ id: "acc-2", current_balance: 1000 })],
+      [makeEvent({ event_type: "transfer", account_id: "acc-1", destination_account_id: "acc-2", amount: 500, event_date: "2026-01-15" })],
+      "2026-01-01",
+      "2026-01-31",
+      "acc-1"
+    );
+    const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
+    expect(jan15?.events[0].type).toBe("expense");
+    expect(jan15?.events[0].amount).toBe(500);
+  });
+
+  it("transfer filtered by destination account shows as income", () => {
+    const result = computeProjection(
+      [makeAccount({ id: "acc-1", current_balance: 5000 }), makeAccount({ id: "acc-2", current_balance: 1000 })],
+      [makeEvent({ event_type: "transfer", account_id: "acc-1", destination_account_id: "acc-2", amount: 500, event_date: "2026-01-15" })],
+      "2026-01-01",
+      "2026-01-31",
+      "acc-2"
+    );
+    const jan15 = result.dataPoints.find((dp) => dp.date === "2026-01-15");
+    expect(jan15?.events[0].type).toBe("income");
   });
 });

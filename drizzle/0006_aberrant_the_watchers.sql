@@ -1,0 +1,1 @@
+ALTER TABLE "cashflow_events" ADD COLUMN "loan_config" jsonb;

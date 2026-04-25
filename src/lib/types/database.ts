@@ -1,5 +1,5 @@
 export type AccountType = "checking" | "savings" | "credit" | "loan" | "investment";
-export type EventType = "income" | "expense";
+export type EventType = "income" | "expense" | "transfer";
 
 export interface Account {
   id: string;
@@ -18,6 +18,7 @@ export interface Category {
   user_id: string;
   name: string;
   parent_id: string | null;
+  budget_limit: number | null;
   created_at: string;
 }
 
@@ -26,6 +27,15 @@ export interface RecurrenceRule {
   interval: number;
   day_of_month?: number;
   end_date?: string;
+}
+
+export type LoanType = "interest_only" | "amortizing" | "fixed_principal";
+
+export interface LoanConfig {
+  annual_rate: number;
+  loan_type: LoanType;
+  extra_principal: number;
+  term_months?: number;
 }
 
 export interface CashflowEvent {
@@ -40,10 +50,15 @@ export interface CashflowEvent {
   is_recurring: boolean;
   recurrence_rule: RecurrenceRule | null;
   notes: string | null;
+  destination_account_id: string | null;
+  loan_config: LoanConfig | null;
+  actual_amount: number | null;
+  occurred_date: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
   account?: Account;
+  destination_account?: Account;
 }
 
 export interface Scenario {
@@ -73,6 +88,20 @@ export interface ScenarioEvent {
   created_at: string;
 }
 
+export interface EventTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  event_type: EventType;
+  amount: number;
+  account_id: string | null;
+  category_id: string | null;
+  is_recurring: boolean;
+  recurrence_rule: RecurrenceRule | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface EventOverride {
   id: string;
   event_id: string;
@@ -82,6 +111,20 @@ export interface EventOverride {
   is_skipped: boolean;
   notes: string | null;
   created_at: string;
+}
+
+export interface PlaidItem {
+  id: string;
+  user_id: string;
+  item_id: string;
+  access_token: string;
+  institution_id: string | null;
+  institution_name: string | null;
+  cursor: string | null;
+  account_id: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ImportSession {

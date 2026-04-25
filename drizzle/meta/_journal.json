@@ -22,6 +22,41 @@
       "when": 1777139047121,
       "tag": "0002_nosy_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777153122276,
+      "tag": "0003_vengeful_dracula",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777153831210,
+      "tag": "0004_sharp_goliath",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777155192073,
+      "tag": "0005_violet_harry_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777156916091,
+      "tag": "0006_worried_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777157007081,
+      "tag": "0007_light_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecurrenceFields } from "./recurrence-fields";
 import { SELECT_CLASS } from "@/lib/constants";
-import type { Account, Category, CashflowEvent, RecurrenceRule } from "@/lib/types/database";
+import type { Account, Category, CashflowEvent, LoanConfig, RecurrenceRule } from "@/lib/types/database";
 
 interface EventPrefill {
   name?: string;
@@ -44,6 +44,15 @@ export function EventForm({ event, accounts, categories = [], action, title, pre
     event?.event_type ?? prefill?.event_type ?? "expense"
   );
   const [categoryId, setCategoryId] = useState(event?.category_id ?? "");
+  const [isLoan, setIsLoan] = useState(!!event?.loan_config);
+  const [loanConfig, setLoanConfig] = useState<LoanConfig>(
+    event?.loan_config ?? {
+      annual_rate: 0,
+      loan_type: "amortizing",
+      extra_principal: 0,
+      term_months: 360,
+    }
+  );
 
   return (
     <Card className="max-w-lg">
@@ -160,6 +169,89 @@ export function EventForm({ event, accounts, categories = [], action, title, pre
             <>
               <input type="hidden" name="recurrence_rule" value={JSON.stringify(recurrenceRule)} />
               <RecurrenceFields rule={recurrenceRule} onChange={setRecurrenceRule} />
+            </>
+          )}
+
+          {isRecurring && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isLoan}
+                  onChange={(e) => setIsLoan(e.target.checked)}
+                />
+                <span className="text-sm font-medium">Loan payment (dynamic calculation)</span>
+              </label>
+            </div>
+          )}
+
+          {isLoan && (
+            <>
+              <input type="hidden" name="loan_config" value={JSON.stringify(loanConfig)} />
+              <div className="space-y-4 rounded-md border p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="annual_rate">APR (%)</Label>
+                  <Input
+                    id="annual_rate"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={loanConfig.annual_rate}
+                    onChange={(e) =>
+                      setLoanConfig({ ...loanConfig, annual_rate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="loan_type">Loan Type</Label>
+                  <select
+                    id="loan_type"
+                    value={loanConfig.loan_type}
+                    onChange={(e) =>
+                      setLoanConfig({
+                        ...loanConfig,
+                        loan_type: e.target.value as LoanConfig["loan_type"],
+                      })
+                    }
+                    className={SELECT_CLASS}
+                  >
+                    <option value="interest_only">Interest Only</option>
+                    <option value="amortizing">Amortizing</option>
+                    <option value="fixed_principal">Fixed Principal</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="extra_principal">Extra Principal per Payment</Label>
+                  <Input
+                    id="extra_principal"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={loanConfig.extra_principal}
+                    onChange={(e) =>
+                      setLoanConfig({ ...loanConfig, extra_principal: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                {loanConfig.loan_type !== "interest_only" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="term_months">Term (months)</Label>
+                    <Input
+                      id="term_months"
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={loanConfig.term_months ?? 360}
+                      onChange={(e) =>
+                        setLoanConfig({ ...loanConfig, term_months: parseInt(e.target.value) || 360 })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
             </>
           )}
 

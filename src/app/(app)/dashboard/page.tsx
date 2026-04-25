@@ -7,6 +7,9 @@ import { StatsGrid } from "@/components/dashboard/stats-grid";
 import { ProjectionChart } from "@/components/dashboard/projection-chart";
 import { AccountSummaryCard } from "@/components/dashboard/account-summary-card";
 import { SankeyChart } from "@/components/dashboard/sankey-chart";
+import { IncomeExpenseChart } from "@/components/dashboard/income-expense-chart";
+import { VarianceCard } from "@/components/dashboard/variance-card";
+import { ReconciliationCard } from "@/components/dashboard/reconciliation-card";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -80,17 +83,24 @@ export default async function DashboardPage() {
       <ProjectionChart
         accounts={accts}
         events={evts}
+        categories={cats}
         overrides={ovrs}
         scenarios={scens}
         scenarioEvents={scenEvts}
       />
+
+      <IncomeExpenseChart events={evts} accounts={accts} />
+
+      <VarianceCard events={evts} />
+
+      <ReconciliationCard accounts={accts} />
 
       <SankeyChart events={evts} categories={cats} />
 
       {accts.length > 0 && (
         <div>
           <h2 className="mb-4 text-lg font-semibold">Accounts</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {accts.map((account) => (
               <AccountSummaryCard key={account.id} account={account} />
             ))}

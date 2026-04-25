@@ -34,6 +34,7 @@ export const categories = pgTable("categories", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   parentId: uuid("parent_id"),
+  budgetLimit: numeric("budget_limit", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -49,9 +50,27 @@ export const cashflowEvents = pgTable("cashflow_events", {
   isRecurring: boolean("is_recurring").default(false).notNull(),
   recurrenceRule: jsonb("recurrence_rule"),
   notes: text("notes"),
+  destinationAccountId: uuid("destination_account_id").references(() => accounts.id),
+  loanConfig: jsonb("loan_config"),
+  actualAmount: numeric("actual_amount", { precision: 12, scale: 2 }),
+  occurredDate: date("occurred_date"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const eventTemplates = pgTable("event_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  eventType: text("event_type").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  accountId: uuid("account_id").references(() => accounts.id),
+  categoryId: uuid("category_id").references(() => categories.id),
+  isRecurring: boolean("is_recurring").default(false).notNull(),
+  recurrenceRule: jsonb("recurrence_rule"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const scenarios = pgTable("scenarios", {
@@ -102,6 +121,20 @@ export const importSessions = pgTable("import_sessions", {
   status: text("status").default("pending").notNull(),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const plaidItems = pgTable("plaid_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  itemId: text("item_id").notNull().unique(),
+  accessToken: text("access_token").notNull(),
+  institutionId: text("institution_id"),
+  institutionName: text("institution_name"),
+  cursor: text("cursor"),
+  accountId: uuid("account_id").references(() => accounts.id),
+  status: text("status").default("active").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const transactions = pgTable("transactions", {

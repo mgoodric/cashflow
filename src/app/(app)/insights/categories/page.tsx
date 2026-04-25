@@ -11,7 +11,7 @@ export default async function CategoryAuditPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Category Audit</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-muted-foreground">
           Review and fix potential category misclassifications
         </p>
       </div>
