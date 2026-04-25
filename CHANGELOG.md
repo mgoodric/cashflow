@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/mgoodric/cashflow/compare/v2.2.0...v2.3.0) (2026-04-25)
+
+
+### Features
+
+* complete all milestones P2-P6 plus dynamic loan payments ([#50](https://github.com/mgoodric/cashflow/issues/50)) ([fe5a6ed](https://github.com/mgoodric/cashflow/commit/fe5a6ed50f0df9b6d4cf5b331b05e7f5f65bb440))
+
 ## [2.1.0](https://github.com/mgoodric/cashflow/compare/v2.0.2...v2.1.0) (2026-03-27)
 
 
