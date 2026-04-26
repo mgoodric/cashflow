@@ -16,15 +16,28 @@ export default async function EventsPage() {
     .select({
       event: cashflowEvents,
       account: accounts,
-      category: categories,
     })
     .from(cashflowEvents)
     .where(eq(cashflowEvents.userId, user.id))
     .leftJoin(accounts, eq(cashflowEvents.accountId, accounts.id))
-    .leftJoin(categories, eq(cashflowEvents.categoryId, categories.id))
     .orderBy(cashflowEvents.eventDate);
 
-  const events = rows.map(({ event: r, account: a, category: c }) => ({
+  // Build full category paths by fetching all categories
+  const allCats = await db.select().from(categories).where(eq(categories.userId, user.id));
+  const catById = new Map(allCats.map((c) => [c.id, c]));
+
+  function getCategoryPath(catId: string | null): string | null {
+    if (!catId) return null;
+    const parts: string[] = [];
+    let current = catById.get(catId);
+    while (current) {
+      parts.unshift(current.name);
+      current = current.parentId ? catById.get(current.parentId) : undefined;
+    }
+    return parts.length > 0 ? parts.join(" > ") : null;
+  }
+
+  const events = rows.map(({ event: r, account: a }) => ({
     id: r.id,
     user_id: r.userId,
     account_id: r.accountId,
@@ -44,7 +57,7 @@ export default async function EventsPage() {
     created_at: r.createdAt.toISOString(),
     updated_at: r.updatedAt.toISOString(),
     account: a ? toAccount(a) : undefined,
-    category_name: c?.name ?? null,
+    category_name: getCategoryPath(r.categoryId),
   }));
 
   return (
