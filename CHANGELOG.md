@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/mgoodric/cashflow/compare/v2.4.2...v2.5.0) (2026-04-26)
+
+
+### Features
+
+* unified transaction view with historical and projected rows ([e131b3a](https://github.com/mgoodric/cashflow/commit/e131b3abd74e5741694b71f17c5cf7ff0768c48f))
+
 ## [2.4.2](https://github.com/mgoodric/cashflow/compare/v2.4.1...v2.4.2) (2026-04-26)
 
 
