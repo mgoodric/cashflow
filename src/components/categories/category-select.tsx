@@ -16,37 +16,86 @@ interface CategorySelectProps {
 
 interface TreeNode {
   category: Category;
-  children: TreeNode[];
+  effectiveType: "income" | "expense" | null;
   depth: number;
-  fullPath: string;
+}
+
+/**
+ * Resolve effective category type by walking up the parent chain.
+ * A category's own type takes precedence; if null, inherits from parent.
+ */
+function resolveEffectiveTypes(categories: Category[]): Map<string, "income" | "expense" | null> {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const cache = new Map<string, "income" | "expense" | null>();
+
+  function resolve(id: string): "income" | "expense" | null {
+    if (cache.has(id)) return cache.get(id)!;
+    const cat = byId.get(id);
+    if (!cat) { cache.set(id, null); return null; }
+
+    if (cat.category_type) {
+      cache.set(id, cat.category_type);
+      return cat.category_type;
+    }
+
+    const inherited = cat.parent_id ? resolve(cat.parent_id) : null;
+    cache.set(id, inherited);
+    return inherited;
+  }
+
+  for (const cat of categories) resolve(cat.id);
+  return cache;
 }
 
 function buildTree(categories: Category[], filterType?: "income" | "expense" | null): TreeNode[] {
-  const byParent = new Map<string | null, Category[]>();
+  const effectiveTypes = resolveEffectiveTypes(categories);
+
+  // Filter categories based on effective type
+  const included = new Set<string>();
   for (const cat of categories) {
-    // Filter by type if specified — null category_type matches anything
-    if (filterType && cat.category_type && cat.category_type !== filterType) continue;
+    const effective = effectiveTypes.get(cat.id) ?? null;
+    if (!filterType || !effective || effective === filterType) {
+      included.add(cat.id);
+    }
+  }
+
+  // Also include parents of included categories so the tree isn't broken
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  for (const cat of categories) {
+    if (included.has(cat.id) && cat.parent_id && !included.has(cat.parent_id)) {
+      let parentId: string | null = cat.parent_id;
+      while (parentId) {
+        included.add(parentId);
+        parentId = byId.get(parentId)?.parent_id ?? null;
+      }
+    }
+  }
+
+  const byParent = new Map<string, Category[]>();
+  for (const cat of categories) {
+    if (!included.has(cat.id)) continue;
     const key = cat.parent_id ?? "__root__";
     const list = byParent.get(key) ?? [];
     list.push(cat);
     byParent.set(key, list);
   }
 
-  function expand(parentId: string | null, depth: number, pathPrefix: string): TreeNode[] {
+  function expand(parentId: string | null, depth: number): TreeNode[] {
     const key = parentId ?? "__root__";
     const children = byParent.get(key) ?? [];
     return children
       .sort((a, b) => a.name.localeCompare(b.name))
       .flatMap((cat) => {
-        const fullPath = pathPrefix ? `${pathPrefix} > ${cat.name}` : cat.name;
-        const node: TreeNode = { category: cat, children: [], depth, fullPath };
-        const childNodes = expand(cat.id, depth + 1, fullPath);
-        node.children = childNodes;
-        return [node, ...childNodes];
+        const node: TreeNode = {
+          category: cat,
+          effectiveType: effectiveTypes.get(cat.id) ?? null,
+          depth,
+        };
+        return [node, ...expand(cat.id, depth + 1)];
       });
   }
 
-  return expand(null, 0, "");
+  return expand(null, 0);
 }
 
 export function CategorySelect({
@@ -72,9 +121,14 @@ export function CategorySelect({
       {treeNodes.map((node) => (
         <option key={node.category.id} value={node.category.id}>
           {"  ".repeat(node.depth)}{node.depth > 0 ? "└ " : ""}{node.category.name}
-          {node.category.category_type ? ` (${node.category.category_type})` : ""}
         </option>
       ))}
     </select>
   );
 }
+
+/**
+ * Utility to get effective type for a category, considering inheritance.
+ * Exported for use in other components (e.g., category tree display).
+ */
+export { resolveEffectiveTypes };

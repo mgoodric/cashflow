@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SELECT_CLASS } from "@/lib/constants";
 import { createCategory, updateCategory, deleteCategory } from "@/actions/categories";
+import { resolveEffectiveTypes } from "@/components/categories/category-select";
 import type { Category } from "@/lib/types/database";
 import type { CategoryBudgetStatus } from "@/lib/budget";
 
@@ -63,11 +64,13 @@ function CategoryItem({
   category,
   allCategories,
   budgetMap,
+  effectiveTypes,
   onEdit,
 }: {
   category: Category;
   allCategories: Category[];
   budgetMap: Map<string, CategoryBudgetStatus>;
+  effectiveTypes: Map<string, "income" | "expense" | null>;
   onEdit: (cat: Category) => void;
 }) {
   const childCategories = allCategories.filter((c) => c.parent_id === category.id);
@@ -79,11 +82,16 @@ function CategoryItem({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium">{category.name}</span>
-            {category.category_type && (
-              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${category.category_type === "income" ? "text-green-600 border-green-400/50" : "text-red-600 border-red-400/50"}`}>
-                {category.category_type}
-              </Badge>
-            )}
+            {(() => {
+              const effective = effectiveTypes.get(category.id);
+              const isInherited = !category.category_type && !!effective;
+              if (!effective) return null;
+              return (
+                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${effective === "income" ? "text-green-600 border-green-400/50" : "text-red-600 border-red-400/50"} ${isInherited ? "opacity-50" : ""}`}>
+                  {effective}{isInherited ? " (inherited)" : ""}
+                </Badge>
+              );
+            })()}
             {category.budget_limit !== null && (
               <span className="text-xs text-muted-foreground">
                 (Limit: {formatCurrency(category.budget_limit)})
@@ -111,6 +119,7 @@ function CategoryItem({
               category={child}
               allCategories={allCategories}
               budgetMap={budgetMap}
+              effectiveTypes={effectiveTypes}
               onEdit={onEdit}
             />
           ))}
@@ -126,6 +135,7 @@ export function CategoryTree({ categories, budgetStatuses }: CategoryTreeProps) 
 
   const rootCategories = categories.filter((c) => c.parent_id === null);
   const budgetMap = new Map(budgetStatuses.map((s) => [s.category.id, s]));
+  const effectiveTypes = resolveEffectiveTypes(categories);
 
   function handleEdit(cat: Category) {
     setEditingCategory(cat);
@@ -247,6 +257,7 @@ export function CategoryTree({ categories, budgetStatuses }: CategoryTreeProps) 
                 category={cat}
                 allCategories={categories}
                 budgetMap={budgetMap}
+                effectiveTypes={effectiveTypes}
                 onEdit={handleEdit}
               />
             ))
