@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.0](https://github.com/mgoodric/cashflow/compare/v2.6.0...v2.7.0) (2026-04-26)
+
+
+### Features
+
+* add category type (income/expense) and hierarchical category select ([9205b59](https://github.com/mgoodric/cashflow/commit/9205b5964c0803d146f1cdc2cc5cdc963b4815a1))
+
 ## [2.6.0](https://github.com/mgoodric/cashflow/compare/v2.5.0...v2.6.0) (2026-04-26)
 
 
