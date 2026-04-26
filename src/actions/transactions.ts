@@ -82,3 +82,32 @@ export async function deleteTransaction(id: string): Promise<void> {
   await db.delete(transactions).where(eq(transactions.id, id));
   revalidatePath("/transactions");
 }
+
+export async function confirmProjectedOccurrence(data: {
+  eventId: string;
+  date: string;
+  name: string;
+  amount: number;
+  type: "income" | "expense";
+  accountId: string;
+  categoryId?: string | null;
+}): Promise<void> {
+  const user = await requireUser();
+
+  await db.insert(transactions).values({
+    userId: user.id,
+    accountId: data.accountId,
+    eventId: data.eventId,
+    categoryId: data.categoryId || null,
+    transactionDate: data.date,
+    amount: String(data.amount),
+    payee: data.name,
+    payeeNormalized: normalizePayee(data.name),
+    transactionType: data.type,
+    source: "event",
+    isCleared: true,
+  });
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+}

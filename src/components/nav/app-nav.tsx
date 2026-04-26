@@ -5,9 +5,11 @@ const navItems = [
   { href: "/accounts", label: "Accounts" },
   { href: "/events", label: "Events" },
   { href: "/transactions", label: "Transactions" },
+  { href: "/categories", label: "Categories" },
   { href: "/import", label: "Import" },
   { href: "/scenarios", label: "Scenarios" },
   { href: "/insights", label: "Insights" },
+  { href: "/settings", label: "Settings" },
 ];
 
 interface AppNavProps {

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SELECT_CLASS } from "@/lib/constants";
-import { updateTransaction, deleteTransaction } from "@/actions/transactions";
+import { updateTransaction, deleteTransaction, confirmProjectedOccurrence } from "@/actions/transactions";
 import type { Transaction, Account, Category } from "@/lib/types/database";
 import type { ProjectedRow } from "@/lib/expand-events";
 
@@ -357,10 +357,17 @@ function EditableRow({
 function ProjectedRowView({
   row,
   balance,
+  onConfirm,
+  isConfirming,
 }: {
   row: UnifiedRow;
   balance: number | null;
+  onConfirm: (row: UnifiedRow) => void;
+  isConfirming: boolean;
 }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmAmount, setConfirmAmount] = useState(String(row.amount));
+
   const amountColor =
     row.type === "income"
       ? "text-green-600 dark:text-green-400"
@@ -420,14 +427,52 @@ function ProjectedRowView({
         {balance !== null ? fmt(balance) : "--"}
       </TableCell>
       <TableCell className="p-1.5">
-        {row.event_id && (
-          <Link
-            href={`/events/${row.event_id}/edit`}
-            className="inline-flex items-center h-6 px-2 text-xs rounded-md text-blue-600 dark:text-blue-400 hover:bg-muted transition-colors"
-          >
-            View Event
-          </Link>
-        )}
+        <div className="flex items-center gap-1">
+          {!showConfirm ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowConfirm(true)}
+                className="inline-flex items-center h-6 px-2 text-xs rounded-md text-green-600 dark:text-green-400 hover:bg-muted transition-colors"
+              >
+                Confirm
+              </button>
+              {row.event_id && (
+                <Link
+                  href={`/events/${row.event_id}/edit`}
+                  className="inline-flex items-center h-6 px-2 text-xs rounded-md text-blue-600 dark:text-blue-400 hover:bg-muted transition-colors"
+                >
+                  Event
+                </Link>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="0.01"
+                value={confirmAmount}
+                onChange={(e) => setConfirmAmount(e.target.value)}
+                className="h-6 w-24 text-xs px-1"
+              />
+              <button
+                type="button"
+                disabled={isConfirming}
+                onClick={() => onConfirm({ ...row, amount: parseFloat(confirmAmount) || row.amount })}
+                className="inline-flex items-center h-6 px-2 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {isConfirming ? "..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowConfirm(false); setConfirmAmount(String(row.amount)); }}
+                className="inline-flex items-center h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -614,6 +659,21 @@ export function TransactionGrid({
     });
   }
 
+  function handleConfirm(row: UnifiedRow) {
+    startTransition(async () => {
+      await confirmProjectedOccurrence({
+        eventId: row.event_id!,
+        date: row.date,
+        name: row.name,
+        amount: row.amount,
+        type: row.type === "income" ? "income" : "expense",
+        accountId: row.account_id,
+        categoryId: row.category_id ?? null,
+      });
+      router.refresh();
+    });
+  }
+
   const historicalCount = mergedRows.filter((r) => r.source === "historical").length;
   const projectedCount = mergedRows.filter((r) => r.source === "projected").length;
 
@@ -736,6 +796,8 @@ export function TransactionGrid({
                   key={row.id}
                   row={row}
                   balance={balanceMap.get(row.id) ?? null}
+                  onConfirm={handleConfirm}
+                  isConfirming={isPending}
                 />
               );
             })}
