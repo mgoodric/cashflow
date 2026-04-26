@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/mgoodric/cashflow/compare/v2.4.1...v2.4.2) (2026-04-26)
+
+
+### Bug Fixes
+
+* replace hardcoded gray classes with CSS variable-based dark mode colors ([45dd8dd](https://github.com/mgoodric/cashflow/commit/45dd8dde51f4596b6a8cc67f03fcc00aff57e751))
+
 ## [2.4.1](https://github.com/mgoodric/cashflow/compare/v2.4.0...v2.4.1) (2026-04-25)
 
 
