@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/mgoodric/cashflow/compare/v2.5.0...v2.6.0) (2026-04-26)
+
+
+### Features
+
+* add Confirm button on projected rows and restore missing nav links ([48974e7](https://github.com/mgoodric/cashflow/commit/48974e77a2900df6441fb857a0299162a2fc59ed))
+
 ## [2.5.0](https://github.com/mgoodric/cashflow/compare/v2.4.2...v2.5.0) (2026-04-26)
 
 
