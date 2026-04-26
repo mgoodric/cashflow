@@ -55,6 +55,7 @@ export function toCategory(r: CategoryRow): Category {
     user_id: r.userId,
     name: r.name,
     parent_id: r.parentId,
+    category_type: r.categoryType as Category["category_type"],
     budget_limit: r.budgetLimit ? Number(r.budgetLimit) : null,
     created_at: r.createdAt.toISOString(),
   };

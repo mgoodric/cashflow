@@ -16,10 +16,13 @@ export async function createCategory(formData: FormData) {
   const parentId = formData.get("parent_id") as string;
   const budgetLimitStr = formData.get("budget_limit") as string;
 
+  const categoryType = formData.get("category_type") as string;
+
   await db.insert(categories).values({
     userId: user.id,
     name: formData.get("name") as string,
     parentId: parentId || null,
+    categoryType: categoryType || null,
     budgetLimit: budgetLimitStr ? String(parseFloat(budgetLimitStr)) : null,
   });
 
@@ -33,11 +36,14 @@ export async function updateCategory(id: string, formData: FormData) {
   const parentId = formData.get("parent_id") as string;
   const budgetLimitStr = formData.get("budget_limit") as string;
 
+  const categoryType = formData.get("category_type") as string;
+
   await db
     .update(categories)
     .set({
       name: formData.get("name") as string,
       parentId: parentId || null,
+      categoryType: categoryType || null,
       budgetLimit: budgetLimitStr ? String(parseFloat(budgetLimitStr)) : null,
     })
     .where(and(eq(categories.id, id), eq(categories.userId, user.id)));

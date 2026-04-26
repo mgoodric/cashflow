@@ -34,6 +34,7 @@ export const categories = pgTable("categories", {
   userId: uuid("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   parentId: uuid("parent_id"),
+  categoryType: text("category_type"),
   budgetLimit: numeric("budget_limit", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

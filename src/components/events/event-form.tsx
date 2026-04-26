@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecurrenceFields } from "./recurrence-fields";
+import { CategorySelect } from "@/components/categories/category-select";
 import { SELECT_CLASS } from "@/lib/constants";
 import type { Account, Category, CashflowEvent, LoanConfig, RecurrenceRule } from "@/lib/types/database";
 
@@ -89,17 +90,13 @@ export function EventForm({ event, accounts, categories = [], action, title, pre
 
           <div className="space-y-2">
             <Label htmlFor="category_id">Category (optional)</Label>
-            <select
+            <CategorySelect
               id="category_id"
+              categories={categories}
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              <option value="">No category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
+              onChange={setCategoryId}
+              filterType={eventType === "income" ? "income" : eventType === "expense" ? "expense" : null}
+            />
             <input type="hidden" name="category_id" value={categoryId} />
           </div>
 

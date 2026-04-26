@@ -79,6 +79,11 @@ function CategoryItem({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium">{category.name}</span>
+            {category.category_type && (
+              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${category.category_type === "income" ? "text-green-600 border-green-400/50" : "text-red-600 border-red-400/50"}`}>
+                {category.category_type}
+              </Badge>
+            )}
             {category.budget_limit !== null && (
               <span className="text-xs text-muted-foreground">
                 (Limit: {formatCurrency(category.budget_limit)})
@@ -183,6 +188,20 @@ export function CategoryTree({ categories, budgetStatuses }: CategoryTreeProps) 
                         {c.name}
                       </option>
                     ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category_type">Type</Label>
+                <select
+                  id="category_type"
+                  name="category_type"
+                  defaultValue={editingCategory?.category_type ?? ""}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Any (income or expense)</option>
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
                 </select>
               </div>
 

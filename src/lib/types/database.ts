@@ -13,11 +13,14 @@ export interface Account {
   updated_at: string;
 }
 
+export type CategoryType = "income" | "expense" | null;
+
 export interface Category {
   id: string;
   user_id: string;
   name: string;
   parent_id: string | null;
+  category_type: CategoryType;
   budget_limit: number | null;
   created_at: string;
 }
