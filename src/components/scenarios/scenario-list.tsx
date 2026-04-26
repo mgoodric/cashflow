@@ -105,7 +105,7 @@ export function ScenarioList({ scenarios }: ScenarioListProps) {
       {scenarios.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               No scenarios yet. Create one to start modeling what-if financial outcomes.
             </p>
           </CardContent>
@@ -118,9 +118,9 @@ export function ScenarioList({ scenarios }: ScenarioListProps) {
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold">{scenario.name}</h3>
                   {scenario.description && (
-                    <p className="text-sm text-gray-500">{scenario.description}</p>
+                    <p className="text-sm text-muted-foreground">{scenario.description}</p>
                   )}
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-muted-foreground/70">
                     Created {formatDate(scenario.created_at)}
                   </p>
                 </div>
@@ -135,7 +135,7 @@ export function ScenarioList({ scenarios }: ScenarioListProps) {
                     size="sm"
                     className={
                       confirmDeleteId === scenario.id
-                        ? "border-red-300 text-red-600 hover:bg-red-50"
+                        ? "border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                         : ""
                     }
                     disabled={deleteId === scenario.id}

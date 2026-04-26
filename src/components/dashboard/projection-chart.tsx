@@ -65,7 +65,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
 
   const data = payload[0].payload;
   return (
-    <div className="rounded-lg border bg-white p-3 shadow-md">
+    <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
       <p className="text-sm font-medium">{formatDate(data.date)}</p>
       <p className={`text-lg font-bold ${data.balance < 0 ? "text-red-600" : "text-green-600"}`}>
         {formatCurrency(data.balance)}
@@ -73,7 +73,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
       {data.events.length > 0 && (
         <div className="mt-1 space-y-1">
           {data.events.map((evt, i) => (
-            <p key={i} className="text-xs text-gray-500">
+            <p key={i} className="text-xs text-muted-foreground">
               {evt.type === "income" ? "+" : "-"}{formatCurrency(evt.amount)} {evt.name}
             </p>
           ))}
@@ -249,7 +249,7 @@ export function ProjectionChart({
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500">
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span>
             Lowest: <strong className={projection.lowestBalance < 0 ? "text-red-600" : ""}>
               {formatCurrency(projection.lowestBalance)}
@@ -264,7 +264,7 @@ export function ProjectionChart({
           )}
         </div>
         {isComparing && (
-          <div className="mt-2 flex gap-4 text-xs text-gray-400">
+          <div className="mt-2 flex gap-4 text-xs text-muted-foreground/70">
             <span className="flex items-center gap-1">
               <span className="inline-block h-0.5 w-4 bg-green-500" /> Current
             </span>

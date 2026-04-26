@@ -17,13 +17,13 @@ interface AppNavProps {
 
 export function AppNav({ email, version }: AppNavProps) {
   return (
-    <header className="border-b bg-white">
+    <header className="border-b bg-card">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-8">
           <Link href="/dashboard" className="text-xl font-bold">
             Cashflow
             {version && (
-              <sup className="ml-1 text-xs font-normal text-gray-400">v{version}</sup>
+              <sup className="ml-1 text-xs font-normal text-muted-foreground/70">v{version}</sup>
             )}
           </Link>
           <nav className="flex gap-4">
@@ -31,7 +31,7 @@ export function AppNav({ email, version }: AppNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
               >
                 {item.label}
               </Link>
@@ -39,7 +39,7 @@ export function AppNav({ email, version }: AppNavProps) {
           </nav>
         </div>
         {email && (
-          <span className="text-sm text-gray-500">{email}</span>
+          <span className="text-sm text-muted-foreground">{email}</span>
         )}
       </div>
     </header>

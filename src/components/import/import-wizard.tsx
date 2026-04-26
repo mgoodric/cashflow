@@ -86,7 +86,7 @@ function StepIndicator({
                   ? "bg-primary text-primary-foreground"
                   : isComplete
                     ? "bg-primary/20 text-primary"
-                    : "bg-gray-200 text-gray-500"
+                    : "bg-muted text-muted-foreground"
               }`}
             >
               {isComplete ? "\u2713" : step}
@@ -94,10 +94,10 @@ function StepIndicator({
             <span
               className={`text-sm ${
                 isActive
-                  ? "font-medium text-gray-900"
+                  ? "font-medium text-foreground"
                   : isComplete
-                    ? "text-gray-600"
-                    : "text-gray-400"
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground/70"
               }`}
             >
               {labels[i]}
@@ -105,7 +105,7 @@ function StepIndicator({
             {i < totalSteps - 1 && (
               <div
                 className={`mx-2 h-px w-8 ${
-                  isComplete ? "bg-primary/40" : "bg-gray-200"
+                  isComplete ? "bg-primary/40" : "bg-muted"
                 }`}
               />
             )}
@@ -437,16 +437,16 @@ export function ImportWizard({
               isDragging
                 ? "border-primary bg-primary/5"
                 : parsedFile
-                  ? "border-green-300 bg-green-50"
-                  : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                  ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/30"
+                  : "border-border hover:border-border hover:bg-muted"
             }`}
           >
             {parsedFile ? (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-green-700">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
                   File loaded successfully
                 </p>
-                <p className="text-sm text-green-600">{fileName}</p>
+                <p className="text-sm text-green-600 dark:text-green-400">{fileName}</p>
                 <div className="flex gap-3 pt-2">
                   <Badge variant="secondary">
                     {parsedFile.accounts.length} account{parsedFile.accounts.length !== 1 ? "s" : ""}
@@ -461,10 +461,10 @@ export function ImportWizard({
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-foreground/80">
                   Drag and drop a .qif or .csv file here
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   or click to browse (max 10MB)
                 </p>
               </div>
@@ -478,7 +478,7 @@ export function ImportWizard({
             />
           </div>
           {parseError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-400">
               {parseError}
             </div>
           )}
@@ -495,7 +495,7 @@ export function ImportWizard({
           <CardTitle>Map Accounts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Match each QIF account to an existing account, create a new one, or skip it.
           </p>
           <div className="space-y-3">
@@ -508,7 +508,7 @@ export function ImportWizard({
                   <p className="truncate text-sm font-medium">
                     {mapping.qifName}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Type: {mapping.suggestedAppType}
                   </p>
                 </div>
@@ -556,7 +556,7 @@ export function ImportWizard({
             <CardTitle>Map Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               No categories found in the QIF file. You can proceed to the next step.
             </p>
           </CardContent>
@@ -569,7 +569,7 @@ export function ImportWizard({
           <CardTitle>Map Categories</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Match QIF categories to existing ones, create new, or skip.
           </p>
           <div className="max-h-96 space-y-2 overflow-y-auto">
@@ -586,7 +586,7 @@ export function ImportWizard({
                       {mapping.name}
                     </p>
                     {mapping.parentPath && (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-muted-foreground/70">
                         {mapping.parentPath}
                       </p>
                     )}
@@ -640,18 +640,18 @@ export function ImportWizard({
         <CardContent className="space-y-4">
           {!isDateAmbiguous && selectedDateFormat ? (
             <div className="space-y-3">
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                <p className="text-sm font-medium text-green-700">
+              <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-900/30 dark:border-green-800 p-3">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
                   Date format detected: {selectedDateFormat}
                 </p>
               </div>
               {dateFormatSamples.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-foreground/80">
                     Sample conversions:
                   </p>
                   {dateFormatSamples.slice(0, 3).map((raw, i) => (
-                    <p key={i} className="text-sm text-gray-500">
+                    <p key={i} className="text-sm text-muted-foreground">
                       {raw} → {formatSampleDate(raw, selectedDateFormat)}
                     </p>
                   ))}
@@ -660,7 +660,7 @@ export function ImportWizard({
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 The date format is ambiguous. Please select the correct format:
               </p>
               <div className="space-y-3">
@@ -670,7 +670,7 @@ export function ImportWizard({
                     className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
                       selectedDateFormat === fmt
                         ? "border-primary bg-primary/5"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-border hover:border-border"
                     }`}
                   >
                     <input
@@ -685,7 +685,7 @@ export function ImportWizard({
                       <p className="text-sm font-medium">{fmt}</p>
                       <div className="mt-1 space-y-0.5">
                         {dateFormatSamples.slice(0, 3).map((raw, i) => (
-                          <p key={i} className="text-xs text-gray-500">
+                          <p key={i} className="text-xs text-muted-foreground">
                             {raw} → {formatSampleDate(raw, fmt)}
                           </p>
                         ))}
@@ -713,43 +713,43 @@ export function ImportWizard({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Accounts</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Accounts</p>
                 <p className="text-lg font-semibold">
                   {stats.newAccounts} new, {stats.matchedAccounts} matched
                 </p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Categories</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Categories</p>
                 <p className="text-lg font-semibold">
                   {stats.newCategories} new, {stats.matchedCategories} matched
                 </p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Transactions</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Transactions</p>
                 <p className="text-lg font-semibold">
                   {stats.totalTransactions} total
                 </p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Income</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Income</p>
                 <p className="text-lg font-semibold text-green-600">
                   {stats.incomeCount}
                 </p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Expenses</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Expenses</p>
                 <p className="text-lg font-semibold text-red-600">
                   {stats.expenseCount}
                 </p>
               </div>
-              <div className="rounded-lg bg-gray-50 p-3">
-                <p className="text-xs text-gray-500">Transfers</p>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Transfers</p>
                 <p className="text-lg font-semibold">{stats.transferCount}</p>
               </div>
               {stats.dateRange.earliest && (
-                <div className="col-span-2 rounded-lg bg-gray-50 p-3 md:col-span-3">
-                  <p className="text-xs text-gray-500">Date Range</p>
+                <div className="col-span-2 rounded-lg bg-muted/50 p-3 md:col-span-3">
+                  <p className="text-xs text-muted-foreground">Date Range</p>
                   <p className="text-lg font-semibold">
                     {stats.dateRange.earliest} to {stats.dateRange.latest}
                   </p>
@@ -881,7 +881,7 @@ export function ImportWizard({
           <CardContent>
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Processing your file. This may take a moment for large files.
               </p>
             </div>
@@ -903,26 +903,26 @@ export function ImportWizard({
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg bg-green-50 p-3">
-              <p className="text-xs text-gray-500">Accounts Created</p>
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/30 p-3">
+              <p className="text-xs text-muted-foreground">Accounts Created</p>
               <p className="text-lg font-semibold text-green-700">
                 {importResult.accountsCreated}
               </p>
             </div>
-            <div className="rounded-lg bg-green-50 p-3">
-              <p className="text-xs text-gray-500">Categories Created</p>
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/30 p-3">
+              <p className="text-xs text-muted-foreground">Categories Created</p>
               <p className="text-lg font-semibold text-green-700">
                 {importResult.categoriesCreated}
               </p>
             </div>
-            <div className="rounded-lg bg-green-50 p-3">
-              <p className="text-xs text-gray-500">Transactions Imported</p>
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/30 p-3">
+              <p className="text-xs text-muted-foreground">Transactions Imported</p>
               <p className="text-lg font-semibold text-green-700">
                 {importResult.transactionsImported}
               </p>
             </div>
-            <div className="rounded-lg bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">Duplicates Skipped</p>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-xs text-muted-foreground">Duplicates Skipped</p>
               <p className="text-lg font-semibold">
                 {importResult.duplicatesSkipped}
               </p>
@@ -932,7 +932,7 @@ export function ImportWizard({
           {hasErrors && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-red-700">Errors:</p>
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-3">
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30 p-3">
                 {importResult.errors.map((err, i) => (
                   <p key={i} className="text-sm text-red-600">
                     {err}

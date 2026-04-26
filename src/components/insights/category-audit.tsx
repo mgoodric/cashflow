@@ -190,7 +190,7 @@ export function CategoryAudit({ flags: initialFlags, categories }: CategoryAudit
                         selectedIds.has(f.transactionId)
                       )}
                       onChange={() => toggleGroupSelection(group)}
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-border"
                     />
                     <span className="font-medium">{group.payee}</span>
                     <span className="text-sm text-muted-foreground">
@@ -231,7 +231,7 @@ export function CategoryAudit({ flags: initialFlags, categories }: CategoryAudit
                               type="checkbox"
                               checked={selectedIds.has(flag.transactionId)}
                               onChange={() => toggleSelection(flag.transactionId)}
-                              className="h-4 w-4 rounded border-gray-300"
+                              className="h-4 w-4 rounded border-border"
                             />
                           </td>
                           <td className="py-2 pr-4">{formatDate(flag.transactionDate)}</td>
@@ -305,7 +305,7 @@ export function CategoryAudit({ flags: initialFlags, categories }: CategoryAudit
                           type="checkbox"
                           checked={selectedIds.has(flag.transactionId)}
                           onChange={() => toggleSelection(flag.transactionId)}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-4 w-4 rounded border-border"
                         />
                       </td>
                       <td className="py-2 pr-4">{formatDate(flag.transactionDate)}</td>

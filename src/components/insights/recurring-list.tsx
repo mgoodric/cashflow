@@ -61,7 +61,7 @@ function PatternCard({
               </Badge>
             </div>
 
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
               <span>
                 Median: {formatCurrency(pattern.medianAmount)}
               </span>
@@ -128,7 +128,7 @@ function PatternSection({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
       {patterns.map((pattern) => (
         <PatternCard
           key={pattern.payeeNormalized}
@@ -166,7 +166,7 @@ export function RecurringList({
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             No recurring patterns detected. Import more transactions to improve detection.
           </p>
         </CardContent>

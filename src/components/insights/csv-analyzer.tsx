@@ -190,7 +190,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
           className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
             isDragOver
               ? "border-primary bg-primary/5"
-              : "border-gray-300 hover:border-gray-400"
+              : "border-border hover:border-border"
           }`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
@@ -204,7 +204,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Drag & drop CSV files here, or{" "}
             <button
               type="button"
@@ -214,7 +214,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
               browse
             </button>
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-muted-foreground/70">
             Quicken CSV exports, max 10MB per file
           </p>
         </div>
@@ -231,10 +231,10 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
                     key={`${file.name}-${i}`}
                     className="flex items-center justify-between text-sm"
                   >
-                    <span className="truncate text-gray-600">{file.name}</span>
+                    <span className="truncate text-muted-foreground">{file.name}</span>
                     <button
                       type="button"
-                      className="ml-2 text-xs text-gray-400 hover:text-red-500"
+                      className="ml-2 text-xs text-muted-foreground/70 hover:text-red-500"
                       onClick={() => removeFile(i)}
                     >
                       Remove
@@ -297,7 +297,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
       {/* New patterns */}
       {visibleNewPatterns.length > 0 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700">New Patterns</h3>
+          <h3 className="text-sm font-semibold text-foreground/80">New Patterns</h3>
           {visibleNewPatterns.map((pattern) => {
             const showAmountRange =
               pattern.amountRange.min !== pattern.amountRange.max;
@@ -324,7 +324,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
                         </Badge>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
                         <span>
                           Median: {formatCurrency(pattern.medianAmount)}
                         </span>
@@ -365,7 +365,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
       ) : result.newPatterns.length === 0 && result.allPatterns.length > 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               All detected patterns are already tracked as cashflow events.
             </p>
           </CardContent>
@@ -373,7 +373,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
       ) : visibleNewPatterns.length === 0 && result.newPatterns.length > 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               All new patterns have been dismissed.
             </p>
           </CardContent>
@@ -383,7 +383,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
       {result.allPatterns.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               No recurring patterns detected. Try uploading more transaction
               history.
             </p>
@@ -396,7 +396,7 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
         <div className="space-y-3">
           <button
             type="button"
-            className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+            className="flex items-center gap-2 text-sm font-semibold text-foreground/80"
             onClick={() => setTrackedCollapsed((prev) => !prev)}
           >
             <span
@@ -415,8 +415,8 @@ export function CsvAnalyzer({ existingEvents }: CsvAnalyzerProps) {
                   <div className="flex items-center gap-3 text-sm">
                     <ConfidenceDot pattern={pattern} />
                     <span className="font-medium">{pattern.payee}</span>
-                    <span className="text-gray-400">matched to</span>
-                    <span className="text-gray-600">{matchedEventName}</span>
+                    <span className="text-muted-foreground/70">matched to</span>
+                    <span className="text-muted-foreground">{matchedEventName}</span>
                   </div>
                 </CardContent>
               </Card>

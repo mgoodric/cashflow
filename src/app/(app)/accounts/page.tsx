@@ -24,7 +24,7 @@ export default async function AccountsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Accounts</h1>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">Manage your financial accounts</p>
+          <p className="text-sm text-muted-foreground">Manage your financial accounts</p>
         </div>
         <Link href="/accounts/new">
           <Button>Add Account</Button>

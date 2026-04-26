@@ -185,7 +185,7 @@ function SankeyTooltip({ active, payload }: CustomTooltipProps) {
 
   if (linkPayload && linkPayload.sourceName && linkPayload.targetName) {
     return (
-      <div className="rounded-lg border bg-white p-3 shadow-md">
+      <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="text-sm font-medium">
           {linkPayload.sourceName} &rarr; {linkPayload.targetName}
         </p>
@@ -196,7 +196,7 @@ function SankeyTooltip({ active, payload }: CustomTooltipProps) {
 
   if (data?.name && data?.value !== undefined) {
     return (
-      <div className="rounded-lg border bg-white p-3 shadow-md">
+      <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="text-sm font-medium">{data.name}</p>
         <p className="text-lg font-bold">{formatCurrency(data.value)}</p>
       </div>
@@ -321,11 +321,11 @@ export function SankeyChart({ events, categories }: SankeyChartProps) {
       <CardContent>
         {!hasCategories ? (
           <div className="flex h-[400px] flex-col items-center justify-center text-center">
-            <div className="rounded-lg border-2 border-dashed border-gray-200 p-8">
-              <p className="text-lg font-medium text-gray-600">
+            <div className="rounded-lg border-2 border-dashed border-border p-8">
+              <p className="text-lg font-medium text-muted-foreground">
                 No categories assigned yet
               </p>
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-2 text-sm text-muted-foreground/70">
                 Assign categories to your cashflow events to see how your income
                 flows into expenses. Edit your events and select a category to
                 get started.
@@ -334,11 +334,11 @@ export function SankeyChart({ events, categories }: SankeyChartProps) {
           </div>
         ) : !sankeyData ? (
           <div className="flex h-[400px] flex-col items-center justify-center text-center">
-            <div className="rounded-lg border-2 border-dashed border-gray-200 p-8">
-              <p className="text-lg font-medium text-gray-600">
+            <div className="rounded-lg border-2 border-dashed border-border p-8">
+              <p className="text-lg font-medium text-muted-foreground">
                 Not enough data for this period
               </p>
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-2 text-sm text-muted-foreground/70">
                 You need both income and expense events with categories assigned
                 within the selected time range to generate the flow chart.
               </p>

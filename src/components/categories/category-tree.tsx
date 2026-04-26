@@ -49,7 +49,7 @@ function BudgetIndicator({ status }: { status: CategoryBudgetStatus }) {
           <Badge variant="secondary">Nearing limit</Badge>
         )}
       </div>
-      <div className="h-1.5 w-full max-w-48 rounded-full bg-gray-200">
+      <div className="h-1.5 w-full max-w-48 rounded-full bg-muted">
         <div
           className={`h-1.5 rounded-full ${colorClass}`}
           style={{ width: `${barWidth}%` }}
@@ -141,7 +141,7 @@ export function CategoryTree({ categories, budgetStatuses }: CategoryTreeProps) 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Categories</h1>
-          <p className="text-sm text-gray-500">Manage spending categories and budget limits</p>
+          <p className="text-sm text-muted-foreground">Manage spending categories and budget limits</p>
         </div>
         {!showForm && (
           <Button onClick={() => setShowForm(true)}>Add Category</Button>

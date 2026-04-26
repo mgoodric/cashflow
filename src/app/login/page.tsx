@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Cashflow Manager</CardTitle>

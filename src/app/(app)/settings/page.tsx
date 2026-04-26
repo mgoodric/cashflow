@@ -12,7 +12,7 @@ export default async function SettingsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-gray-500 dark:text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Manage connected bank accounts and integrations
         </p>
       </div>

@@ -217,15 +217,15 @@ export function ScenarioDetail({
           <div className="mb-1 flex items-center gap-2">
             <Link
               href="/scenarios"
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-muted-foreground hover:text-foreground/80"
             >
               Scenarios
             </Link>
-            <span className="text-sm text-gray-400">/</span>
+            <span className="text-sm text-muted-foreground/70">/</span>
           </div>
           <h1 className="text-2xl font-bold">{scenario.name}</h1>
           {scenario.description && (
-            <p className="text-sm text-gray-500">{scenario.description}</p>
+            <p className="text-sm text-muted-foreground">{scenario.description}</p>
           )}
         </div>
       </div>
@@ -234,18 +234,18 @@ export function ScenarioDetail({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Current (90-day)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{formatCurrency(baseEndBalance)}</p>
-            <p className="text-xs text-gray-400">Ending balance</p>
+            <p className="text-xs text-muted-foreground/70">Ending balance</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Scenario (90-day)
             </CardTitle>
           </CardHeader>
@@ -253,12 +253,12 @@ export function ScenarioDetail({
             <p className="text-2xl font-bold">
               {formatCurrency(scenarioEndBalance)}
             </p>
-            <p className="text-xs text-gray-400">Ending balance</p>
+            <p className="text-xs text-muted-foreground/70">Ending balance</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Difference
             </CardTitle>
           </CardHeader>
@@ -275,7 +275,7 @@ export function ScenarioDetail({
               {difference >= 0 ? "+" : ""}
               {formatCurrency(difference)}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground/70">
               {difference > 0
                 ? "Better off"
                 : difference < 0
@@ -293,12 +293,12 @@ export function ScenarioDetail({
         </CardHeader>
         <CardContent>
           {baseEvents.length === 0 ? (
-            <p className="text-sm text-gray-500">No active events.</p>
+            <p className="text-sm text-muted-foreground">No active events.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-gray-500">
+                  <tr className="border-b text-left text-muted-foreground">
                     <th className="pb-2 font-medium">Name</th>
                     <th className="pb-2 font-medium">Type</th>
                     <th className="pb-2 font-medium">Amount</th>
@@ -316,7 +316,7 @@ export function ScenarioDetail({
                     return (
                       <tr
                         key={event.id}
-                        className={`border-b ${isExcluded ? "text-gray-400 line-through" : ""}`}
+                        className={`border-b ${isExcluded ? "text-muted-foreground/70 line-through" : ""}`}
                       >
                         <td className="py-2">{event.name}</td>
                         <td className="py-2">
@@ -456,11 +456,11 @@ export function ScenarioDetail({
                     >
                       {se.event_type}
                     </Badge>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       {se.amount != null ? formatCurrency(se.amount) : ""}
                     </span>
                     {se.is_recurring && se.recurrence_rule && (
-                      <span className="ml-2 text-xs text-gray-400">
+                      <span className="ml-2 text-xs text-muted-foreground/70">
                         {FREQUENCY_LABELS[se.recurrence_rule.frequency]}
                       </span>
                     )}
@@ -468,7 +468,7 @@ export function ScenarioDetail({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-red-600 hover:bg-red-50"
+                    className="h-7 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
                     disabled={isPending}
                     onClick={() => {
                       startTransition(async () => {
@@ -566,7 +566,7 @@ export function ScenarioDetail({
                   onChange={(e) =>
                     setAddForm({ ...addForm, isRecurring: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-border"
                 />
                 <Label htmlFor="add-recurring">Is recurring</Label>
               </div>
@@ -635,7 +635,7 @@ export function ScenarioDetail({
           <CardTitle>Balance Adjustments</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-muted-foreground">
             Adjust starting balances for this scenario (positive to add, negative
             to subtract).
           </p>
@@ -647,7 +647,7 @@ export function ScenarioDetail({
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{account.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     Current: {formatCurrency(account.current_balance)}
                   </p>
                 </div>

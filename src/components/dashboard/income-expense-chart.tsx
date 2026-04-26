@@ -53,7 +53,7 @@ function CustomTooltip({
 
   const data = payload[0].payload;
   return (
-    <div className="rounded-lg border bg-white p-3 shadow-md">
+    <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md">
       <p className="text-sm font-medium">{data.month}</p>
       <p className="text-sm text-green-600">
         Income: {formatCurrency(data.income)}

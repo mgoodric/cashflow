@@ -43,14 +43,14 @@ export function EventCard({ event, categoryName }: EventCardProps) {
                 currency: "USD",
               }).format(event.amount)}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {event.account?.name} &middot; {new Date(event.event_date + "T00:00:00").toLocaleDateString()}
               {endDate && (
                 <> &middot; ends {new Date(endDate + "T00:00:00").toLocaleDateString()}</>
               )}
             </p>
             {categoryName && (
-              <p className="text-xs text-gray-400 mt-1">{categoryName}</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">{categoryName}</p>
             )}
           </div>
           <div className="flex gap-2">

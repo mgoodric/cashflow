@@ -407,7 +407,7 @@ export function EventOverrides({ event, overrides }: EventOverridesProps) {
         </CardHeader>
         <CardContent>
           {successMessage && (
-            <div className="mb-3 p-2 rounded bg-green-50 text-green-700 text-sm border border-green-200">
+            <div className="mb-3 p-2 rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm border border-green-200 dark:border-green-800">
               {successMessage}
             </div>
           )}

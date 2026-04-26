@@ -8,7 +8,7 @@ export default async function TransactionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Transactions</h1>
-        <p className="text-sm text-gray-500 dark:text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           View and edit your transaction history
         </p>
       </div>

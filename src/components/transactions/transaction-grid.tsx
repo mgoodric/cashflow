@@ -229,7 +229,7 @@ function EditableRow({
 
   return (
     <TableRow
-      className="even:bg-gray-50 dark:even:bg-muted/30 cursor-pointer"
+      className="even:bg-muted/30 cursor-pointer"
       onDoubleClick={onStartEdit}
     >
       <TableCell className="p-1.5 text-sm">{txn.transaction_date}</TableCell>

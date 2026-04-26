@@ -52,7 +52,7 @@ export default async function EventsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Cashflow Events</h1>
-          <p className="text-sm text-gray-500">Manage your income and expenses</p>
+          <p className="text-sm text-muted-foreground">Manage your income and expenses</p>
         </div>
         <Link href="/events/new">
           <Button>Add Event</Button>

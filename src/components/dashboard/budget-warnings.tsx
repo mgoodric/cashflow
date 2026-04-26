@@ -194,7 +194,7 @@ export function BudgetWarnings({ categories, events }: BudgetWarningsProps) {
                     </span>
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-gray-200">
+                <div className="h-2 w-full rounded-full bg-muted">
                   <div
                     className={`h-2 rounded-full transition-all ${colorClass}`}
                     style={{ width: `${barWidth}%` }}
