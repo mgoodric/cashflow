@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.0](https://github.com/mgoodric/cashflow/compare/v2.8.0...v2.9.0) (2026-04-26)
+
+
+### Features
+
+* show full category path on event cards (Housing &gt; HELOC &gt; Athlon Ct) ([deb2b85](https://github.com/mgoodric/cashflow/commit/deb2b8584e0989ebb0ed19d66dc71dc70f54b4ad))
+
 ## [2.8.0](https://github.com/mgoodric/cashflow/compare/v2.7.0...v2.8.0) (2026-04-26)
 
 
