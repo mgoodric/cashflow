@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0](https://github.com/mgoodric/cashflow/compare/v2.7.0...v2.8.0) (2026-04-26)
+
+
+### Features
+
+* category type inheritance from parent categories ([33ba58b](https://github.com/mgoodric/cashflow/commit/33ba58b86df3fadd08a67fff4a2800622c63afb4))
+
 ## [2.7.0](https://github.com/mgoodric/cashflow/compare/v2.6.0...v2.7.0) (2026-04-26)
 
 
