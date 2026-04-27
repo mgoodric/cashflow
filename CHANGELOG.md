@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.1](https://github.com/mgoodric/cashflow/compare/v2.9.0...v2.9.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* **deps:** add eslint major-version ignore rule to dependabot.yml ([#62](https://github.com/mgoodric/cashflow/issues/62)) ([ace97aa](https://github.com/mgoodric/cashflow/commit/ace97aab5b5fcceb06e9afc7cbe7a4336d01ddd9))
+
 ## [2.9.0](https://github.com/mgoodric/cashflow/compare/v2.8.0...v2.9.0) (2026-04-26)
 
 
