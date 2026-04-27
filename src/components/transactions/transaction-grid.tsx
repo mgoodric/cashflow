@@ -531,6 +531,7 @@ export function TransactionGrid({
         is_cleared: t.is_cleared,
         transaction_type: t.transaction_type,
         category_id: t.category_id,
+        event_id: t.event_id ?? undefined,
       })),
     [transactions]
   );
@@ -559,13 +560,25 @@ export function TransactionGrid({
   const mergedRows = useMemo(() => {
     const cutoff = getTimeRangeCutoff(timeRange);
 
+    // Build set of confirmed event+date combos to dedup projected rows
+    const confirmedKeys = new Set<string>();
+    for (const h of historicalRows) {
+      if (h.event_id) {
+        confirmedKeys.add(`${h.event_id}|${h.date}`);
+      }
+    }
+
     let rows: UnifiedRow[];
     if (timeRange === "past") {
       rows = historicalRows;
     } else {
-      const filteredProjected = cutoff
+      let filteredProjected = cutoff
         ? projectedUnified.filter((r) => r.date <= toDateStr(cutoff))
         : projectedUnified;
+      // Remove projected rows that have been confirmed as real transactions
+      filteredProjected = filteredProjected.filter(
+        (r) => !r.event_id || !confirmedKeys.has(`${r.event_id}|${r.date}`)
+      );
       rows = [...historicalRows, ...filteredProjected];
     }
 

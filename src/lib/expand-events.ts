@@ -70,12 +70,14 @@ export function expandEventsToRows(
   events: CashflowEvent[],
   accounts: Account[],
   overrides: EventOverride[],
-  futureDays: number = 90
+  futureDays: number = 90,
+  pastDays: number = 30
 ): ProjectedRow[] {
   const rows: ProjectedRow[] = [];
   const today = new Date();
-  const startDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-  const endDate = addDays(startDate, futureDays);
+  const todayUtc = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const startDate = addDays(todayUtc, -pastDays);
+  const endDate = addDays(todayUtc, futureDays);
 
   const overrideMap = new Map<string, EventOverride>();
   for (const o of overrides) {
