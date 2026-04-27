@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.2](https://github.com/mgoodric/cashflow/compare/v2.9.1...v2.9.2) (2026-04-27)
+
+
+### Bug Fixes
+
+* include recent past occurrences in transactions and dedup confirmed ([b058f30](https://github.com/mgoodric/cashflow/commit/b058f30607424d66896ad60131aca2215d32cfc0))
+
 ## [2.9.1](https://github.com/mgoodric/cashflow/compare/v2.9.0...v2.9.1) (2026-04-27)
 
 
