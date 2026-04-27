@@ -3,14 +3,7 @@
 import { useState, useTransition, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +46,10 @@ type UnifiedRow = {
 
 type SortField = "date" | "name" | "amount";
 type SortDir = "asc" | "desc";
-type TimeRange = "past" | "30d" | "90d" | "180d" | "1y";
+
+type DisplayRow =
+  | { kind: "data"; row: UnifiedRow }
+  | { kind: "today-divider" };
 
 interface EditState {
   transactionDate: string;
@@ -72,46 +68,74 @@ const fmt = (n: number) =>
     currency: "USD",
   }).format(Math.abs(n));
 
-const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
-  { value: "past", label: "Past Only" },
-  { value: "30d", label: "30d" },
-  { value: "90d", label: "90d" },
-  { value: "180d", label: "180d" },
-  { value: "1y", label: "1y" },
-];
-
-function getTimeRangeCutoff(range: TimeRange): Date | null {
-  if (range === "past") return new Date();
-  const now = new Date();
-  const days = range === "30d" ? 30 : range === "90d" ? 90 : range === "180d" ? 180 : 365;
-  return new Date(now.getTime() + days * 86400000);
-}
-
 function toDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
+function getDefaultDateRange(): { from: string; to: string } {
+  const now = new Date();
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const oneYearAhead = new Date(now);
+  oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+  return { from: toDateStr(oneYearAgo), to: toDateStr(oneYearAhead) };
+}
+
+type DatePreset = "this-month" | "this-quarter" | "this-year" | "all-time";
+
+function applyPreset(preset: DatePreset): { from: string; to: string } {
+  const now = new Date();
+  switch (preset) {
+    case "this-month": {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return { from: toDateStr(start), to: toDateStr(end) };
+    }
+    case "this-quarter": {
+      const q = Math.floor(now.getMonth() / 3);
+      const start = new Date(now.getFullYear(), q * 3, 1);
+      const end = new Date(now.getFullYear(), q * 3 + 3, 0);
+      return { from: toDateStr(start), to: toDateStr(end) };
+    }
+    case "this-year": {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      return { from: toDateStr(start), to: toDateStr(end) };
+    }
+    case "all-time":
+      return { from: "", to: "" };
+  }
+}
+
+// -- Column widths (consistent between header and rows) --
+const COL = {
+  source: "w-[80px] min-w-[80px]",
+  date: "w-[100px] min-w-[100px]",
+  name: "flex-1 min-w-[120px]",
+  amount: "w-[120px] min-w-[120px]",
+  type: "w-[90px] min-w-[90px]",
+  category: "w-[120px] min-w-[120px]",
+  account: "w-[120px] min-w-[120px]",
+  memo: "w-[140px] min-w-[140px]",
+  balance: "w-[110px] min-w-[110px]",
+  actions: "w-[160px] min-w-[160px]",
+} as const;
+
 // -- Editable Row Component (historical transactions only) --
 
-function EditableRow({
+function EditableRowEditing({
   txn,
   accounts,
   categories,
-  isEditing,
-  onStartEdit,
   onCancelEdit,
   onSave,
-  onDelete,
   isSaving,
 }: {
   txn: TransactionWithDetails;
   accounts: Account[];
   categories: Category[];
-  isEditing: boolean;
-  onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: (id: string, data: EditState) => void;
-  onDelete: (id: string) => void;
   isSaving: boolean;
 }) {
   const [edit, setEdit] = useState<EditState>({
@@ -124,14 +148,13 @@ function EditableRow({
     memo: txn.memo ?? "",
     isCleared: txn.is_cleared,
   });
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing && firstInputRef.current) {
+    if (firstInputRef.current) {
       firstInputRef.current.focus();
     }
-  }, [isEditing]);
+  }, []);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
@@ -143,196 +166,168 @@ function EditableRow({
     }
   }
 
-  if (isEditing) {
-    return (
-      <TableRow
-        className="bg-blue-50/60 dark:bg-blue-950/20 border-l-2 border-l-blue-400"
-        onKeyDown={handleKeyDown}
-      >
-        <TableCell className="p-1" />
-        <TableCell className="p-1">
-          <input
-            ref={firstInputRef}
-            type="date"
-            className="h-7 w-[130px] rounded border border-input bg-transparent px-1.5 text-sm"
-            value={edit.transactionDate}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, transactionDate: e.target.value }))
-            }
-          />
-        </TableCell>
-        <TableCell className="p-1">
-          <Input
-            className="h-7 text-sm"
-            value={edit.payee}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, payee: e.target.value }))
-            }
-          />
-        </TableCell>
-        <TableCell className="p-1">
-          <Input
-            type="number"
-            step="0.01"
-            className="h-7 w-[100px] text-sm"
-            value={edit.amount}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, amount: e.target.value }))
-            }
-          />
-        </TableCell>
-        <TableCell className="p-1">
-          <select
-            className={`${SELECT_CLASS} h-7 w-[100px] text-sm py-0`}
-            value={edit.transactionType}
-            onChange={(e) =>
-              setEdit((s) => ({
-                ...s,
-                transactionType: e.target.value as "income" | "expense",
-              }))
-            }
-          >
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
-        </TableCell>
-        <TableCell className="p-1">
-          <select
-            className={`${SELECT_CLASS} h-7 w-[140px] text-sm py-0`}
-            value={edit.categoryId}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, categoryId: e.target.value }))
-            }
-          >
-            <option value="">None</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </TableCell>
-        <TableCell className="p-1">
-          <select
-            className={`${SELECT_CLASS} h-7 w-[140px] text-sm py-0`}
-            value={edit.accountId}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, accountId: e.target.value }))
-            }
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </TableCell>
-        <TableCell className="p-1">
-          <Input
-            className="h-7 text-sm"
-            value={edit.memo}
-            onChange={(e) =>
-              setEdit((s) => ({ ...s, memo: e.target.value }))
-            }
-          />
-        </TableCell>
-        <TableCell className="p-1" />
-        <TableCell className="p-1">
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="default"
-              className="h-6 px-2 text-xs"
-              disabled={isSaving}
-              onClick={() => onSave(txn.id, edit)}
-            >
-              {isSaving ? "..." : "Save"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs"
-              onClick={onCancelEdit}
-            >
-              Cancel
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    );
-  }
-
   return (
-    <TableRow
-      className="even:bg-muted/30 cursor-pointer"
-      onDoubleClick={onStartEdit}
+    <div
+      className="flex items-center bg-blue-50/60 dark:bg-blue-950/20 border-l-2 border-l-blue-400 border-b border-border"
+      style={{ height: 56 }}
+      onKeyDown={handleKeyDown}
     >
-      <TableCell className="p-1.5">
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground border-muted-foreground/30">
-          History
-        </Badge>
-      </TableCell>
-      <TableCell className="p-1.5 text-sm">{txn.transaction_date}</TableCell>
-      <TableCell className="p-1.5 text-sm max-w-[200px] truncate">
-        {txn.payee ?? ""}
-      </TableCell>
-      <TableCell
-        className={`p-1.5 text-sm font-mono tabular-nums ${
-          txn.transaction_type === "income"
-            ? "text-green-600 dark:text-green-400"
-            : "text-red-600 dark:text-red-400"
-        }`}
-      >
-        {txn.transaction_type === "income" ? "+" : "-"}
-        {fmt(txn.amount)}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm">
-        <Badge
-          variant={txn.transaction_type === "income" ? "default" : "secondary"}
-          className="text-xs"
+      <div className={`${COL.source} shrink-0 p-1`} />
+      <div className={`${COL.date} shrink-0 p-1`}>
+        <input
+          ref={firstInputRef}
+          type="date"
+          className="h-7 w-full rounded border border-input bg-transparent px-1.5 text-sm"
+          value={edit.transactionDate}
+          onChange={(e) => setEdit((s) => ({ ...s, transactionDate: e.target.value }))}
+        />
+      </div>
+      <div className={`${COL.name} shrink-0 p-1`}>
+        <Input
+          className="h-7 text-sm"
+          value={edit.payee}
+          onChange={(e) => setEdit((s) => ({ ...s, payee: e.target.value }))}
+        />
+      </div>
+      <div className={`${COL.amount} shrink-0 p-1`}>
+        <Input
+          type="number"
+          step="0.01"
+          className="h-7 w-full text-sm"
+          value={edit.amount}
+          onChange={(e) => setEdit((s) => ({ ...s, amount: e.target.value }))}
+        />
+      </div>
+      <div className={`${COL.type} shrink-0 p-1`}>
+        <select
+          className={`${SELECT_CLASS} h-7 w-full text-sm py-0`}
+          value={edit.transactionType}
+          onChange={(e) =>
+            setEdit((s) => ({ ...s, transactionType: e.target.value as "income" | "expense" }))
+          }
         >
-          {txn.transaction_type === "income" ? "Income" : "Expense"}
-        </Badge>
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground">
-        {txn.category_name ?? "--"}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground">
-        {txn.account_name ?? "--"}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground max-w-[150px] truncate">
-        {txn.memo ?? ""}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm font-mono tabular-nums text-muted-foreground">
-        --
-      </TableCell>
-      <TableCell className="p-1.5">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+      </div>
+      <div className={`${COL.category} shrink-0 p-1`}>
+        <select
+          className={`${SELECT_CLASS} h-7 w-full text-sm py-0`}
+          value={edit.categoryId}
+          onChange={(e) => setEdit((s) => ({ ...s, categoryId: e.target.value }))}
+        >
+          <option value="">None</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className={`${COL.account} shrink-0 p-1`}>
+        <select
+          className={`${SELECT_CLASS} h-7 w-full text-sm py-0`}
+          value={edit.accountId}
+          onChange={(e) => setEdit((s) => ({ ...s, accountId: e.target.value }))}
+        >
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className={`${COL.memo} shrink-0 p-1`}>
+        <Input
+          className="h-7 text-sm"
+          value={edit.memo}
+          onChange={(e) => setEdit((s) => ({ ...s, memo: e.target.value }))}
+        />
+      </div>
+      <div className={`${COL.balance} shrink-0 p-1`} />
+      <div className={`${COL.actions} shrink-0 p-1`}>
         <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-6 px-2 text-xs"
+            disabled={isSaving}
+            onClick={() => onSave(txn.id, edit)}
+          >
+            {isSaving ? "..." : "Save"}
+          </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-6 px-2 text-xs"
-            onClick={onStartEdit}
+            onClick={onCancelEdit}
           >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditableRowDisplay({
+  txn,
+  onStartEdit,
+  onDelete,
+  rowIndex,
+}: {
+  txn: TransactionWithDetails;
+  onStartEdit: () => void;
+  onDelete: (id: string) => void;
+  rowIndex: number;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  return (
+    <div
+      className={`flex items-center cursor-pointer border-b border-border ${rowIndex % 2 === 1 ? "bg-muted/30" : ""}`}
+      style={{ height: 40 }}
+      onDoubleClick={onStartEdit}
+    >
+      <div className={`${COL.source} shrink-0 p-1.5`}>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground border-muted-foreground/30">
+          History
+        </Badge>
+      </div>
+      <div className={`${COL.date} shrink-0 p-1.5 text-sm`}>{txn.transaction_date}</div>
+      <div className={`${COL.name} shrink-0 p-1.5 text-sm truncate`}>{txn.payee ?? ""}</div>
+      <div className={`${COL.amount} shrink-0 p-1.5 text-sm font-mono tabular-nums ${
+        txn.transaction_type === "income"
+          ? "text-green-600 dark:text-green-400"
+          : "text-red-600 dark:text-red-400"
+      }`}>
+        {txn.transaction_type === "income" ? "+" : "-"}{fmt(txn.amount)}
+      </div>
+      <div className={`${COL.type} shrink-0 p-1.5 text-sm`}>
+        <Badge variant={txn.transaction_type === "income" ? "default" : "secondary"} className="text-xs">
+          {txn.transaction_type === "income" ? "Income" : "Expense"}
+        </Badge>
+      </div>
+      <div className={`${COL.category} shrink-0 p-1.5 text-sm text-muted-foreground truncate`}>
+        {txn.category_name ?? "--"}
+      </div>
+      <div className={`${COL.account} shrink-0 p-1.5 text-sm text-muted-foreground truncate`}>
+        {txn.account_name ?? "--"}
+      </div>
+      <div className={`${COL.memo} shrink-0 p-1.5 text-sm text-muted-foreground truncate`}>
+        {txn.memo ?? ""}
+      </div>
+      <div className={`${COL.balance} shrink-0 p-1.5 text-sm font-mono tabular-nums text-muted-foreground`}>
+        --
+      </div>
+      <div className={`${COL.actions} shrink-0 p-1.5`}>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={onStartEdit}>
             Edit
           </Button>
           {confirmDelete ? (
             <span className="inline-flex items-center gap-1 text-xs">
               <span className="text-muted-foreground">Sure?</span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-5 px-1.5 text-xs"
-                onClick={() => onDelete(txn.id)}
-              >
+              <Button size="sm" variant="destructive" className="h-5 px-1.5 text-xs" onClick={() => onDelete(txn.id)}>
                 Yes
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-5 px-1.5 text-xs"
-                onClick={() => setConfirmDelete(false)}
-              >
+              <Button size="sm" variant="ghost" className="h-5 px-1.5 text-xs" onClick={() => setConfirmDelete(false)}>
                 No
               </Button>
             </span>
@@ -347,8 +342,8 @@ function EditableRow({
             </Button>
           )}
         </div>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
   );
 }
 
@@ -359,11 +354,13 @@ function ProjectedRowView({
   balance,
   onConfirm,
   isConfirming,
+  rowIndex,
 }: {
   row: UnifiedRow;
   balance: number | null;
   onConfirm: (row: UnifiedRow) => void;
   isConfirming: boolean;
+  rowIndex: number;
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAmount, setConfirmAmount] = useState(String(row.amount));
@@ -379,8 +376,11 @@ function ProjectedRowView({
     row.type === "income" ? "+" : row.type === "transfer" ? "" : "-";
 
   return (
-    <TableRow className="even:bg-muted/30 border-l-2 border-l-blue-400">
-      <TableCell className="p-1.5">
+    <div
+      className={`flex items-center border-l-2 border-l-blue-400 border-b border-border ${rowIndex % 2 === 1 ? "bg-muted/30" : ""}`}
+      style={{ height: 40 }}
+    >
+      <div className={`${COL.source} shrink-0 p-1.5`}>
         {row.is_overridden ? (
           <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-yellow-600 dark:text-yellow-400 border-yellow-400/50">
             Override
@@ -390,12 +390,10 @@ function ProjectedRowView({
             Projected
           </Badge>
         )}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm">{row.date}</TableCell>
-      <TableCell className="p-1.5 text-sm max-w-[200px] truncate">
-        {row.name}
-      </TableCell>
-      <TableCell className={`p-1.5 text-sm font-mono tabular-nums ${amountColor}`}>
+      </div>
+      <div className={`${COL.date} shrink-0 p-1.5 text-sm`}>{row.date}</div>
+      <div className={`${COL.name} shrink-0 p-1.5 text-sm truncate`}>{row.name}</div>
+      <div className={`${COL.amount} shrink-0 p-1.5 text-sm font-mono tabular-nums ${amountColor}`}>
         {amountPrefix}{fmt(row.amount)}
         {row.loan_payment && (
           <span
@@ -405,28 +403,26 @@ function ProjectedRowView({
             (P+I)
           </span>
         )}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm">
+      </div>
+      <div className={`${COL.type} shrink-0 p-1.5 text-sm`}>
         <Badge
           variant={row.type === "income" ? "default" : row.type === "transfer" ? "outline" : "secondary"}
           className="text-xs"
         >
           {row.type === "income" ? "Income" : row.type === "transfer" ? "Transfer" : "Expense"}
         </Badge>
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground">
+      </div>
+      <div className={`${COL.category} shrink-0 p-1.5 text-sm text-muted-foreground truncate`}>
         {row.category_name ?? "--"}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground">
+      </div>
+      <div className={`${COL.account} shrink-0 p-1.5 text-sm text-muted-foreground truncate`}>
         {row.account_name ?? "--"}
-      </TableCell>
-      <TableCell className="p-1.5 text-sm text-muted-foreground">
-        --
-      </TableCell>
-      <TableCell className={`p-1.5 text-sm font-mono tabular-nums ${balance !== null && balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+      </div>
+      <div className={`${COL.memo} shrink-0 p-1.5 text-sm text-muted-foreground`}>--</div>
+      <div className={`${COL.balance} shrink-0 p-1.5 text-sm font-mono tabular-nums ${balance !== null && balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
         {balance !== null ? fmt(balance) : "--"}
-      </TableCell>
-      <TableCell className="p-1.5">
+      </div>
+      <div className={`${COL.actions} shrink-0 p-1.5`}>
         <div className="flex items-center gap-1">
           {!showConfirm ? (
             <>
@@ -473,8 +469,27 @@ function ProjectedRowView({
             </div>
           )}
         </div>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
+  );
+}
+
+// -- Today Divider --
+
+function TodayDivider() {
+  return (
+    <div
+      className="flex items-center border-b border-border bg-amber-50/60 dark:bg-amber-950/20"
+      style={{ height: 40 }}
+    >
+      <div className="w-full flex items-center gap-3 px-4">
+        <div className="flex-1 h-px bg-amber-400/60" />
+        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+          Today &mdash; {toDateStr(new Date())}
+        </span>
+        <div className="flex-1 h-px bg-amber-400/60" />
+      </div>
+    </div>
   );
 }
 
@@ -489,13 +504,17 @@ export function TransactionGrid({
 }: TransactionGridProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterAccountId, setFilterAccountId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [timeRange, setTimeRange] = useState<TimeRange>("90d");
+
+  const defaultRange = useMemo(() => getDefaultDateRange(), []);
+  const [dateFrom, setDateFrom] = useState(defaultRange.from);
+  const [dateTo, setDateTo] = useState(defaultRange.to);
 
   const toggleSort = useCallback(
     (field: SortField) => {
@@ -513,6 +532,12 @@ export function TransactionGrid({
     if (sortField !== field) return null;
     return sortDir === "asc" ? " \u25B2" : " \u25BC";
   };
+
+  function handlePreset(preset: DatePreset) {
+    const range = applyPreset(preset);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+  }
 
   // Convert transactions to unified rows
   const historicalRows: UnifiedRow[] = useMemo(
@@ -558,8 +583,6 @@ export function TransactionGrid({
 
   // Merge and filter
   const mergedRows = useMemo(() => {
-    const cutoff = getTimeRangeCutoff(timeRange);
-
     // Build set of confirmed event+date combos to dedup projected rows
     const confirmedKeys = new Set<string>();
     for (const h of historicalRows) {
@@ -568,18 +591,19 @@ export function TransactionGrid({
       }
     }
 
-    let rows: UnifiedRow[];
-    if (timeRange === "past") {
-      rows = historicalRows;
-    } else {
-      let filteredProjected = cutoff
-        ? projectedUnified.filter((r) => r.date <= toDateStr(cutoff))
-        : projectedUnified;
-      // Remove projected rows that have been confirmed as real transactions
-      filteredProjected = filteredProjected.filter(
-        (r) => !r.event_id || !confirmedKeys.has(`${r.event_id}|${r.date}`)
-      );
-      rows = [...historicalRows, ...filteredProjected];
+    // Remove projected rows that have been confirmed as real transactions
+    const filteredProjected = projectedUnified.filter(
+      (r) => !r.event_id || !confirmedKeys.has(`${r.event_id}|${r.date}`)
+    );
+
+    let rows: UnifiedRow[] = [...historicalRows, ...filteredProjected];
+
+    // Date range filter
+    if (dateFrom) {
+      rows = rows.filter((r) => r.date >= dateFrom);
+    }
+    if (dateTo) {
+      rows = rows.filter((r) => r.date <= dateTo);
     }
 
     // Account filter
@@ -613,7 +637,44 @@ export function TransactionGrid({
     });
 
     return rows;
-  }, [historicalRows, projectedUnified, timeRange, filterAccountId, search, sortField, sortDir]);
+  }, [historicalRows, projectedUnified, dateFrom, dateTo, filterAccountId, search, sortField, sortDir]);
+
+  // Build display rows with today divider inserted
+  const { displayRows, todayIndex } = useMemo(() => {
+    const todayStr = toDateStr(new Date());
+    const result: DisplayRow[] = [];
+    let foundTodayIdx = -1;
+    let dividerInserted = false;
+
+    // Only insert the today divider when sorting by date ascending
+    const shouldInsertDivider = sortField === "date" && sortDir === "asc";
+
+    for (let i = 0; i < mergedRows.length; i++) {
+      const row = mergedRows[i];
+
+      if (shouldInsertDivider && !dividerInserted && row.date >= todayStr) {
+        // Insert divider before the first row that is >= today
+        // but only if the previous row was < today (avoid divider at very start if all rows are future)
+        const prevRow = i > 0 ? mergedRows[i - 1] : null;
+        if (prevRow === null || prevRow.date < todayStr) {
+          foundTodayIdx = result.length;
+          result.push({ kind: "today-divider" });
+          dividerInserted = true;
+        }
+      }
+
+      result.push({ kind: "data", row });
+    }
+
+    // If no divider was inserted but we should have one (all rows are past)
+    // place it at the end
+    if (shouldInsertDivider && !dividerInserted && mergedRows.length > 0) {
+      foundTodayIdx = result.length;
+      result.push({ kind: "today-divider" });
+    }
+
+    return { displayRows: result, todayIndex: foundTodayIdx };
+  }, [mergedRows, sortField, sortDir]);
 
   // Calculate running balance for projected rows
   const balanceMap = useMemo(() => {
@@ -647,6 +708,40 @@ export function TransactionGrid({
     }
     return map;
   }, [transactions]);
+
+  // Virtualizer
+  const virtualizer = useVirtualizer({
+    count: displayRows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      const displayRow = displayRows[index];
+      if (displayRow.kind === "today-divider") return 40;
+      if (displayRow.kind === "data" && displayRow.row.source === "historical" && editingId === displayRow.row.id) {
+        return 56;
+      }
+      return 40;
+    },
+    overscan: 10,
+  });
+
+  // Scroll to today on mount
+  const hasScrolledRef = useRef(false);
+  useEffect(() => {
+    if (todayIndex >= 0 && !hasScrolledRef.current) {
+      // Small delay to let the virtualizer initialize
+      const timer = setTimeout(() => {
+        virtualizer.scrollToIndex(todayIndex, { align: "start" });
+        hasScrolledRef.current = true;
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [todayIndex, virtualizer]);
+
+  function handleJumpToToday() {
+    if (todayIndex >= 0) {
+      virtualizer.scrollToIndex(todayIndex, { align: "start" });
+    }
+  }
 
   function handleSave(id: string, data: EditState) {
     startTransition(async () => {
@@ -711,26 +806,50 @@ export function TransactionGrid({
     );
   }
 
+  const virtualItems = virtualizer.getVirtualItems();
+
   return (
     <div className="space-y-3">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Time range selector */}
+        {/* Date range inputs */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground">From</label>
+          <input
+            type="date"
+            className="h-8 rounded border border-input bg-transparent px-2 text-sm"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <label className="text-xs text-muted-foreground">To</label>
+          <input
+            type="date"
+            className="h-8 rounded border border-input bg-transparent px-2 text-sm"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+
+        {/* Preset buttons */}
         <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
-          {TIME_RANGE_OPTIONS.map((opt) => (
+          {(
+            [
+              { value: "this-month", label: "This Month" },
+              { value: "this-quarter", label: "This Quarter" },
+              { value: "this-year", label: "This Year" },
+              { value: "all-time", label: "All Time" },
+            ] as { value: DatePreset; label: string }[]
+          ).map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setTimeRange(opt.value)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-sm transition-colors ${
-                timeRange === opt.value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => handlePreset(opt.value)}
+              className="px-2.5 py-1 text-xs font-medium rounded-sm transition-colors text-muted-foreground hover:text-foreground"
             >
               {opt.label}
             </button>
           ))}
         </div>
+
         <select
           className={`${SELECT_CLASS} w-[200px]`}
           value={filterAccountId}
@@ -751,71 +870,121 @@ export function TransactionGrid({
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">Source</TableHead>
-              <TableHead
-                className="cursor-pointer select-none"
-                onClick={() => toggleSort("date")}
-              >
-                Date{sortArrow("date")}
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none"
-                onClick={() => toggleSort("name")}
-              >
-                Name{sortArrow("name")}
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none"
-                onClick={() => toggleSort("amount")}
-              >
-                Amount{sortArrow("amount")}
-              </TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Account</TableHead>
-              <TableHead>Memo</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mergedRows.map((row) => {
-              if (row.source === "historical") {
-                const txn = txnMap.get(row.id);
-                if (!txn) return null;
-                return (
-                  <EditableRow
-                    key={row.id}
-                    txn={txn}
-                    accounts={accounts}
-                    categories={categories}
-                    isEditing={editingId === row.id}
-                    onStartEdit={() => setEditingId(row.id)}
-                    onCancelEdit={() => setEditingId(null)}
-                    onSave={handleSave}
-                    onDelete={handleDelete}
-                    isSaving={isPending}
-                  />
-                );
-              }
+      {/* Virtualized Table */}
+      <div className="rounded-md border border-border relative">
+        {/* Sticky Header */}
+        <div className="flex items-center border-b border-border bg-muted/50 text-sm font-medium text-muted-foreground sticky top-0 z-10" style={{ height: 36 }}>
+          <div className={`${COL.source} shrink-0 px-1.5`}>Source</div>
+          <div
+            className={`${COL.date} shrink-0 px-1.5 cursor-pointer select-none`}
+            onClick={() => toggleSort("date")}
+          >
+            Date{sortArrow("date")}
+          </div>
+          <div
+            className={`${COL.name} shrink-0 px-1.5 cursor-pointer select-none`}
+            onClick={() => toggleSort("name")}
+          >
+            Name{sortArrow("name")}
+          </div>
+          <div
+            className={`${COL.amount} shrink-0 px-1.5 cursor-pointer select-none`}
+            onClick={() => toggleSort("amount")}
+          >
+            Amount{sortArrow("amount")}
+          </div>
+          <div className={`${COL.type} shrink-0 px-1.5`}>Type</div>
+          <div className={`${COL.category} shrink-0 px-1.5`}>Category</div>
+          <div className={`${COL.account} shrink-0 px-1.5`}>Account</div>
+          <div className={`${COL.memo} shrink-0 px-1.5`}>Memo</div>
+          <div className={`${COL.balance} shrink-0 px-1.5`}>Balance</div>
+          <div className={`${COL.actions} shrink-0 px-1.5`}>Actions</div>
+        </div>
+
+        {/* Scrollable virtualized body */}
+        <div
+          ref={parentRef}
+          className="overflow-y-auto overflow-x-auto"
+          style={{ height: "calc(100vh - 280px)" }}
+        >
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualItems.map((virtualRow) => {
+              const displayRow = displayRows[virtualRow.index];
 
               return (
-                <ProjectedRowView
-                  key={row.id}
-                  row={row}
-                  balance={balanceMap.get(row.id) ?? null}
-                  onConfirm={handleConfirm}
-                  isConfirming={isPending}
-                />
+                <div
+                  key={virtualRow.key}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {displayRow.kind === "today-divider" ? (
+                    <TodayDivider />
+                  ) : displayRow.row.source === "historical" ? (
+                    (() => {
+                      const row = displayRow.row;
+                      const txn = txnMap.get(row.id);
+                      if (!txn) return null;
+                      if (editingId === row.id) {
+                        return (
+                          <EditableRowEditing
+                            txn={txn}
+                            accounts={accounts}
+                            categories={categories}
+                            onCancelEdit={() => setEditingId(null)}
+                            onSave={handleSave}
+                            isSaving={isPending}
+                          />
+                        );
+                      }
+                      return (
+                        <EditableRowDisplay
+                          txn={txn}
+                          onStartEdit={() => setEditingId(row.id)}
+                          onDelete={handleDelete}
+                          rowIndex={virtualRow.index}
+                        />
+                      );
+                    })()
+                  ) : (
+                    <ProjectedRowView
+                      row={displayRow.row}
+                      balance={balanceMap.get(displayRow.row.id) ?? null}
+                      onConfirm={handleConfirm}
+                      isConfirming={isPending}
+                      rowIndex={virtualRow.index}
+                    />
+                  )}
+                </div>
               );
             })}
-          </TableBody>
-        </Table>
+          </div>
+        </div>
+
+        {/* Jump to Today floating button */}
+        {todayIndex >= 0 && (
+          <button
+            type="button"
+            onClick={handleJumpToToday}
+            className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-amber-600 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Jump to Today
+          </button>
+        )}
       </div>
 
       {/* Row counts */}
@@ -823,11 +992,6 @@ export function TransactionGrid({
         <span>
           Showing {mergedRows.length} rows ({historicalCount} historical, {projectedCount} projected)
         </span>
-        {timeRange !== "past" && (
-          <span className="text-xs">
-            Projections available up to 90 days out
-          </span>
-        )}
       </div>
     </div>
   );

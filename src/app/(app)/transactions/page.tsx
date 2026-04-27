@@ -28,8 +28,8 @@ export default async function TransactionsPage() {
     : [];
   const ovrs = overrideRows.map(toEventOverride);
 
-  // Generate projected rows for default 90 days
-  const projectedRows = expandEventsToRows(evts, allAccounts, ovrs, 90);
+  // Generate projected rows: 365 days forward, 365 days back
+  const projectedRows = expandEventsToRows(evts, allAccounts, ovrs, 365, 365);
 
   return (
     <div className="space-y-6">

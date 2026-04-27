@@ -27,8 +27,7 @@ export async function getTransactionsWithDetails(): Promise<{
       .where(eq(transactions.userId, user.id))
       .leftJoin(accounts, eq(transactions.accountId, accounts.id))
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
-      .orderBy(desc(transactions.transactionDate))
-      .limit(5000),
+      .orderBy(desc(transactions.transactionDate)),
     db.select().from(accounts).where(eq(accounts.userId, user.id)).orderBy(accounts.name),
     db.select().from(categories).where(eq(categories.userId, user.id)).orderBy(categories.name),
   ]);
