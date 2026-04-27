@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.10.0](https://github.com/mgoodric/cashflow/compare/v2.9.2...v2.10.0) (2026-04-27)
+
+
+### Features
+
+* virtualized full timeline with scroll-to-today and date range picker ([40bca00](https://github.com/mgoodric/cashflow/commit/40bca005f853533524fa354743eb5b15edcda580))
+
 ## [2.9.2](https://github.com/mgoodric/cashflow/compare/v2.9.1...v2.9.2) (2026-04-27)
 
 
